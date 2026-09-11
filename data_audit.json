@@ -1,0 +1,70 @@
+{
+  "source_zip_sha256": "a54c0e6b552d31e2dbd41aba4a07769943433cb9317927514c2d39ec6442e241",
+  "files": [
+    {
+      "file": "附件1.xlsx",
+      "sheet": "Sheet1",
+      "rows": 144,
+      "value_columns": 3,
+      "missing": 0,
+      "non_numeric": 0,
+      "range": [
+        0,
+        7612.316
+      ]
+    },
+    {
+      "file": "附件2.xlsx",
+      "sheet": "小区负载",
+      "rows": 365,
+      "value_columns": 144,
+      "missing": 0,
+      "non_numeric": 0,
+      "range": [
+        1995.7176,
+        7978.8849
+      ]
+    },
+    {
+      "file": "附件2.xlsx",
+      "sheet": "光伏发电实际功率",
+      "rows": 365,
+      "value_columns": 144,
+      "missing": 0,
+      "non_numeric": 0,
+      "range": [
+        0,
+        10216.2
+      ]
+    },
+    {
+      "file": "附件3.xlsx",
+      "sheet": "Sheet1",
+      "rows": 1460,
+      "value_columns": 24,
+      "missing": 0,
+      "non_numeric": 0,
+      "range": [
+        0,
+        9995.8875
+      ]
+    },
+    {
+      "file": "附件4.xlsx",
+      "sheet": "Sheet1",
+      "rows": 365,
+      "value_columns": 144,
+      "missing": 0,
+      "non_numeric": 0,
+      "range": [
+        0.0076,
+        1.7936
+      ]
+    }
+  ],
+  "notes": [
+    "附件3日期可能只在每组首行出现，读取时前向填充",
+    "Excel日期序列转换为真实日期",
+    "功率转电量乘以1/6小时"
+  ]
+}

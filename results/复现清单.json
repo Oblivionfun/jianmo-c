@@ -1,0 +1,41 @@
+{
+  "command": "../.venv/bin/python solve_c.py --seed 20260911",
+  "seed": 20260911,
+  "python": "3.12.14 (main, Aug 25 2026, 13:50:33) [Clang 22.1.3 ]",
+  "platform": "macOS-26.6-arm64-arm-64bit",
+  "packages": {
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "scipy": "1.18.1",
+    "matplotlib": "3.11.1",
+    "openpyxl": "3.1.5"
+  },
+  "input_sha256": {
+    "附件1.xlsx": "66b87134f5ecccd68184d3539bb1293ef039f9e0fdd955a589b9bfa7f227c377",
+    "附件2.xlsx": "2e95fd446bfafa0d8c59577b5c2e2ea8b3f1def20dde54a3062556f4da9b4c72",
+    "附件3.xlsx": "8a61b06c52bd0d639a1cc37c61a7d9f5b75edcbca718f64c1bd3498ec9f9d843",
+    "附件4.xlsx": "20e9c93aeab5e8e21ae4dd15587f9e190f7408692504c1319598461cd654fe71"
+  },
+  "parameters": {
+    "dt": 0.16666666666666666,
+    "eta": 0.9,
+    "capacity_kwh": 12000,
+    "soc_bounds_kwh": [
+      1200.0,
+      10800.0
+    ],
+    "power_kw": 5000,
+    "evaluation_start": "2025-02-01",
+    "evaluation_end": "2025-12-31"
+  },
+  "outputs": [
+    "results/daily_metrics.csv",
+    "results/result1.xlsx",
+    "results/result2.xlsx",
+    "results/result3.xlsx",
+    "results/result4-2.xlsx",
+    "results/result4-3.xlsx",
+    "results/summary.json",
+    "results/复现清单.json"
+  ]
+}

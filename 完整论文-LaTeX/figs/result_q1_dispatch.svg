@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="422.330044pt" height="205.92pt" viewBox="0 0 422.330044 205.92" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-09-11T22:00:04.767665</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 205.92 
+L 422.330044 205.92 
+L 422.330044 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 40.2075 175.32 
+L 414.286763 175.32 
+L 414.286763 3.6 
+L 40.2075 3.6 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <defs>
+       <path id="m133a12b54f" d="M 0 0 
+L 0 3.5 
+" style="stroke: #000000; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#m133a12b54f" x="57.211103" y="175.32" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle" x="57.211103" y="189.2" transform="rotate(-0 57.211103 189.2)">0</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <g>
+       <use xlink:href="#m133a12b54f" x="128.554891" y="175.32" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle" x="128.554891" y="189.2" transform="rotate(-0 128.554891 189.2)">5</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3">
+      <g>
+       <use xlink:href="#m133a12b54f" x="199.898679" y="175.32" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_3">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle" x="199.898679" y="189.2" transform="rotate(-0 199.898679 189.2)">10</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4">
+      <g>
+       <use xlink:href="#m133a12b54f" x="271.242467" y="175.32" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_4">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle" x="271.242467" y="189.2" transform="rotate(-0 271.242467 189.2)">15</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5">
+      <g>
+       <use xlink:href="#m133a12b54f" x="342.586255" y="175.32" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_5">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle" x="342.586255" y="189.2" transform="rotate(-0 342.586255 189.2)">20</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_6">
+      <g>
+       <use xlink:href="#m133a12b54f" x="413.930044" y="175.32" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_6">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle" x="413.930044" y="189.2" transform="rotate(-0 413.930044 189.2)">25</text>
+     </g>
+    </g>
+    <g id="text_7">
+     <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle" x="227.247131" y="201.2" transform="rotate(-0 227.247131 201.2)">时刻 (h)</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_7">
+      <defs>
+       <path id="mc67cc03c54" d="M 0 0 
+L -3.5 0 
+" style="stroke: #000000; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#mc67cc03c54" x="40.2075" y="167.514545" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_8">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: end" x="33.2075" y="170.954545" transform="rotate(-0 33.2075 170.954545)">0</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_8">
+      <g>
+       <use xlink:href="#mc67cc03c54" x="40.2075" y="145.368342" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_9">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: end" x="33.2075" y="148.808342" transform="rotate(-0 33.2075 148.808342)">200</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_9">
+      <g>
+       <use xlink:href="#mc67cc03c54" x="40.2075" y="123.222139" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_10">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: end" x="33.2075" y="126.662139" transform="rotate(-0 33.2075 126.662139)">400</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_10">
+      <g>
+       <use xlink:href="#mc67cc03c54" x="40.2075" y="101.075936" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_11">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: end" x="33.2075" y="104.515936" transform="rotate(-0 33.2075 104.515936)">600</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_11">
+      <g>
+       <use xlink:href="#mc67cc03c54" x="40.2075" y="78.929732" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_12">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: end" x="33.2075" y="82.369732" transform="rotate(-0 33.2075 82.369732)">800</text>
+     </g>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_12">
+      <g>
+       <use xlink:href="#mc67cc03c54" x="40.2075" y="56.783529" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_13">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: end" x="33.2075" y="60.223529" transform="rotate(-0 33.2075 60.223529)">1000</text>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_13">
+      <g>
+       <use xlink:href="#mc67cc03c54" x="40.2075" y="34.637326" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_14">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: end" x="33.2075" y="38.077326" transform="rotate(-0 33.2075 38.077326)">1200</text>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_14">
+      <g>
+       <use xlink:href="#mc67cc03c54" x="40.2075" y="12.491122" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_15">
+      <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: end" x="33.2075" y="15.931122" transform="rotate(-0 33.2075 15.931122)">1400</text>
+     </g>
+    </g>
+    <g id="text_16">
+     <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle" x="10.48" y="89.46" transform="rotate(-90 10.48 89.46)">价格/电量</text>
+    </g>
+   </g>
+   <g id="line2d_15">
+    <path d="M 57.211103 167.467507 
+L 347.342508 167.36518 
+L 366.367518 167.428574 
+L 373.501897 167.466178 
+L 397.28316 167.467197 
+L 397.28316 167.467197 
+" clip-path="url(#p4b0af32bfe)" style="fill: none; stroke: #1f77b4; stroke-width: 1.5; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_16">
+    <path d="M 57.211103 11.755747 
+L 59.589229 11.79021 
+L 66.723608 11.405455 
+L 69.101734 103.66261 
+L 71.47986 103.527553 
+L 73.857987 103.512697 
+L 76.236113 66.620719 
+L 78.614239 103.244553 
+L 80.992366 103.012176 
+L 85.748618 102.824941 
+L 90.504871 102.610141 
+L 100.017376 102.424527 
+L 104.773628 102.09317 
+L 107.151755 102.159647 
+L 109.529881 102.065177 
+L 111.908007 101.810322 
+L 114.286133 101.778005 
+L 116.66426 101.874707 
+L 119.042386 101.81364 
+L 121.420512 101.444031 
+L 123.798638 101.321731 
+L 126.176765 101.611597 
+L 128.554891 102.116087 
+L 130.933017 102.240252 
+L 133.311144 103.461585 
+L 135.68927 14.300491 
+L 138.067396 102.05699 
+L 140.445522 167.514545 
+L 211.789311 167.514545 
+L 214.167437 103.825285 
+L 216.545563 167.514545 
+L 218.923689 167.514545 
+L 221.301816 147.663002 
+L 223.679942 109.920629 
+L 226.058068 113.654658 
+L 228.436194 114.317987 
+L 230.814321 113.776783 
+L 233.192447 113.410599 
+L 235.570573 112.340521 
+L 237.9487 167.514545 
+L 266.486215 167.514545 
+L 268.864341 155.102721 
+L 271.242467 137.978963 
+L 273.620594 145.642566 
+L 275.99872 140.406039 
+L 285.511225 118.191446 
+L 290.267477 106.931497 
+L 292.645604 101.077549 
+L 295.02373 97.152763 
+L 297.401856 94.340092 
+L 299.779983 89.777282 
+L 304.536235 81.593398 
+L 306.914361 76.041507 
+L 309.292488 83.090694 
+L 311.670614 96.980813 
+L 314.04874 108.617377 
+L 316.426866 92.34695 
+L 318.804993 91.523337 
+L 321.183119 90.389907 
+L 323.561245 167.514545 
+L 349.720634 167.514545 
+L 352.098761 88.245653 
+L 354.476887 88.11984 
+L 356.855013 87.770463 
+L 359.233139 88.114331 
+L 361.611266 87.738831 
+L 363.989392 85.780138 
+L 366.367518 93.137234 
+L 368.745644 13.178727 
+L 371.123771 14.163282 
+L 373.501897 104.527859 
+L 375.880023 12.824583 
+L 378.25815 12.739175 
+L 380.636276 104.758026 
+L 383.014402 12.5051 
+L 385.392528 104.638136 
+L 387.770655 104.468885 
+L 390.148781 12.085457 
+L 392.526907 67.308654 
+L 394.905033 104.046092 
+L 397.28316 103.941545 
+L 397.28316 103.941545 
+" clip-path="url(#p4b0af32bfe)" style="fill: none; stroke: #ff7f0e; stroke-width: 1.5; stroke-linecap: square"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 40.2075 175.32 
+L 40.2075 3.6 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 414.286763 175.32 
+L 414.286763 3.6 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 40.2075 175.32 
+L 414.286763 175.32 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 40.2075 3.6 
+L 414.286763 3.6 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="legend_1">
+    <g id="patch_7">
+     <path d="M 202.447131 34 
+L 252.047131 34 
+Q 253.647131 34 253.647131 32.4 
+L 253.647131 9.2 
+Q 253.647131 7.6 252.047131 7.6 
+L 202.447131 7.6 
+Q 200.847131 7.6 200.847131 9.2 
+L 200.847131 32.4 
+Q 200.847131 34 202.447131 34 
+z
+" style="fill: #ffffff; opacity: 0.8; stroke: #cccccc; stroke-linejoin: miter"/>
+    </g>
+    <g id="line2d_17">
+     <path d="M 204.047131 14.88 
+L 212.047131 14.88 
+L 220.047131 14.88 
+" style="fill: none; stroke: #1f77b4; stroke-width: 1.5; stroke-linecap: square"/>
+    </g>
+    <g id="text_17">
+     <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: start" x="226.447131" y="17.68" transform="rotate(-0 226.447131 17.68)">价格</text>
+    </g>
+    <g id="line2d_18">
+     <path d="M 204.047131 26.88 
+L 212.047131 26.88 
+L 220.047131 26.88 
+" style="fill: none; stroke: #ff7f0e; stroke-width: 1.5; stroke-linecap: square"/>
+    </g>
+    <g id="text_18">
+     <text style="font-size: 8px; font-family: 'PingFang SC', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: start" x="226.447131" y="29.68" transform="rotate(-0 226.447131 29.68)">购电量</text>
+    </g>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p4b0af32bfe">
+   <rect x="40.2075" y="3.6" width="374.079263" height="171.72"/>
+  </clipPath>
+ </defs>
+</svg>
