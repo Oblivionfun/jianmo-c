@@ -346,24 +346,46 @@ h("5.1 锁定前缀的滚动策略")
 p(
     "每天0:00使用首份24小时预报生成计划q^0；在6:00、12:00、18:00收到新预报后，只对尚未执行的时段重新求解。"
     "设四次重优化起点为0、36、72、108个十分钟步，已执行前缀的q、c、d和SOC均保持不变，当前末状态作为下一次优化的初始状态。"
-    "这一实现把信息到达时间写进算法，而不是用全天真实光伏回填历史决策。"
+    "每次求解的剩余窗口分别为24、18、12和6小时；这一实现把信息到达时间写进算法，而不是用全天真实光伏回填历史决策。"
+)
+pf.equation(doc, r"x_t^{(k)}=x_t^{exec}\;(t<\tau_k),\quad \tau_k\in\{0,36,72,108\},\quad x=(q,c,d,S)")
+p(
+    "式中τ_k是第k次预报发布对应的十分钟索引。求解器只对τ_k之后的后缀优化，并把前缀末端SOC作为边界；因此每次更新既能利用新预报，又不会篡改已经发生的购电和储能动作。负荷仍沿用问题二的日期因果预测，Q3新增的信息只作用于光伏后缀。"
 )
 h("5.2 计划—调整结算")
 p(
-    "令q_t^a为最终调整计划，题面结算规则写成"
+    "令q_t^a为最终调整计划，q_t^0为0:00基准计划。两者只在尚未执行的后缀上允许不同，题面结算规则写成"
 )
 pf.equation(doc, r"K_3=\sum_t p_tq_t^0+\sum_t0.5p_t[q_t^0-q_t^a]^++\sum_t1.5p_t[q_t^a-q_t^0]^++\sum_t5p_te_t")
 p(
-    "逐日记录基准费、调减费、调增费和紧急费，并检查四项之和。结算时始终以q^0计入基准费，调整部分按计划差额分为调减和调增两项，避免把最终调整计划误当作基准计划。"
+    "逐日记录基准费、调减费、调增费和紧急费，并检查四项之和。结算时始终以q^0计入基准费，调整部分按计划差额分为调减和调增两项：减少计划量按0.5倍价格计费，增加计划量按1.5倍价格计费，避免把最终调整计划误当作基准计划。"
 )
 row3 = daily[["q3_base_cost", "q3_reduction_fee", "q3_increase_fee", "q3_emergency_cost", "q3_cost"]].sum()
+q2_positive_days = int((daily["q2_emergency_kwh"] > 1e-8).sum())
+q3_positive_days = int((daily["q3_emergency_kwh"] > 1e-8).sum())
+q3_adj_corr = float(daily[["q3_adjustment_abs_kwh", "q3_emergency_kwh"]].corr().iloc[0, 1])
 doc.add_paragraph("表7  Q3全年结算分项")
 pf.three_line_table(doc, [["分项", "全年金额/元", "占Q3总费用/%"], ["计划基准费", f"{row3['q3_base_cost']:.2f}", f"{100*row3['q3_base_cost']/row3['q3_cost']:.2f}"], ["调减费", f"{row3['q3_reduction_fee']:.2f}", f"{100*row3['q3_reduction_fee']/row3['q3_cost']:.2f}"], ["调增费", f"{row3['q3_increase_fee']:.2f}", f"{100*row3['q3_increase_fee']/row3['q3_cost']:.2f}"], ["紧急费", f"{row3['q3_emergency_cost']:.2f}", f"{100*row3['q3_emergency_cost']/row3['q3_cost']:.2f}"], ["合计", f"{row3['q3_cost']:.2f}", "100.00"]])
 p(
     f"Q3全年费用为{agg['q3']['cost']:.2f}元，紧急购电量为{agg['q3']['emergency_kwh']:.3f} kWh，"
-    f"计划—调整绝对差额总量为{daily['q3_adjustment_abs_kwh'].sum():.3f} kWh。"
+    f"计划—调整绝对差额总量为{daily['q3_adjustment_abs_kwh'].sum():.3f} kWh；其中调减量为{daily['q3_reduction_kwh'].sum():.3f} kWh，调增量为{daily['q3_increase_kwh'].sum():.3f} kWh。"
 )
-fig("process_q3_adjustment", "图5  问题三计划—调整差额与紧急购电量")
+fig("process_q3_adjustment", "图5  问题三计划—调整差额与紧急购电量", width=4.8)
+p(
+    f"表7中计划基准费占Q3总费用的{100*row3['q3_base_cost']/row3['q3_cost']:.2f}%，调减和调增费用合计占{100*(row3['q3_reduction_fee']+row3['q3_increase_fee'])/row3['q3_cost']:.2f}%，紧急费占{100*row3['q3_emergency_cost']/row3['q3_cost']:.2f}%。"
+    "基准计划仍然决定大部分账单，调整并不是把原计划完全替换掉。"
+)
+h("5.3 结果解读与边界")
+p(
+    f"与Q2相比，Q3全年费用增加{agg['q3']['cost']-agg['q2']['cost']:.2f}元（{100*(agg['q3']['cost']/agg['q2']['cost']-1):.2f}%），紧急购电量增加{agg['q3']['emergency_kwh']-agg['q2']['emergency_kwh']:.3f} kWh（{100*(agg['q3']['emergency_kwh']/agg['q2']['emergency_kwh']-1):.2f}%），出现正紧急量的日期由{q2_positive_days}天变为{q3_positive_days}天。"
+    "在当前数据和结算规则下，滚动更新没有自动带来更低费用；调整费和新储能轨迹可能抵消信息更新带来的收益。"
+)
+p(
+    f"图5的计划—调整绝对差与紧急购电量相关系数仅为{q3_adj_corr:.4f}，说明多调计划量不必然对应更大的实际缺口。散点图用于揭示这种解耦关系，而不是证明滚动策略具有因果改善；若要比较策略优劣，应在相同日初SOC、价格和信息集下做独立滚动回测，并报告费用、紧急量和调整量的联合分布。"
+)
+p(
+    "从执行角度看，滚动策略的价值取决于新预报能否在储能尚有调节余量时改变后缀计划；如果更新到达时SOC已接近边界，或者调整主要发生在高价时段，新增信息会转化为调增费用或紧急费用。因而Q3应被看作带结算摩擦的在线策略实验，不能简单等同于“更新次数越多越好”。"
+)
 
 H("六、问题四：波动价格下的独立分支")
 h("6.1 问题4-2")
