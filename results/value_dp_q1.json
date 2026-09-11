@@ -1,0 +1,7 @@
+{
+  "grid_step_kwh": 5.0,
+  "lp_objective": 35126.986129895326,
+  "dp_grid_value": 35188.90791638612,
+  "relative_gap_pct": 0.17627981592788,
+  "reachable_initial_states": 1921
+}

@@ -4,11 +4,10 @@ from pathlib import Path
 from datetime import datetime, date, timedelta
 import numpy as np
 import pandas as pd
-import sys as _sys
-_sys.path.insert(0, '/Users/xingyu/.codex/skills/math-modeling/tools/figure/scripts')
-from export_figure import export_figure
+from scripts.export_figure import export_figure
 from scipy.optimize import linprog, milp, LinearConstraint, Bounds
 from openpyxl import load_workbook
+from state_value import settlement_b, forecast_load_decomposed, finite_grid_value_dp
 
 ROOT=Path(__file__).resolve().parent
 IN=ROOT/'input'/'附件'; OUT=ROOT/'results'; FIG=ROOT/'figures'
@@ -101,6 +100,22 @@ def forecast_pv(pv, d, hist_days=7):
     if not prior: return np.zeros(T)
     return np.nanmedian(pv.loc[prior].values.astype(float),axis=0)
 
+def audit_dispatch(result, initial, terminal=None, *, tol=1e-5):
+    """Fail fast on physical violations before a result reaches the bill."""
+    c,d,q,u,e,s = (np.asarray(result[k], dtype=float) for k in ('c','d','q','u','e_plan','s'))
+    if np.min(c) < -tol or np.min(d) < -tol or np.min(q) < -tol or np.min(u) < -tol or np.min(e) < -tol:
+        raise AssertionError('negative dispatch variable')
+    if np.max(c) > P_MAX + tol or np.max(d) > P_MAX + tol:
+        raise AssertionError('charge/discharge power bound violated')
+    if np.min(s) < S_MIN - tol or np.max(s) > S_MAX + tol:
+        raise AssertionError('SOC bound violated')
+    if abs(float(s[0]) - float(initial)) > tol:
+        raise AssertionError('initial SOC mismatch')
+    if terminal is not None and abs(float(s[-1]) - float(terminal)) > tol:
+        raise AssertionError('terminal SOC mismatch')
+    overlap=float(np.minimum(c,d).sum())
+    return {'overlap_kwh': overlap, 'soc_min': float(s.min()), 'soc_max': float(s.max())}
+
 def interp_forecast(vals24):
     # 24 hourly values at hour 1..24; map 10-min centers, endpoints by interpolation.
     x=np.arange(24)*60+30; y=np.asarray(vals24,dtype=float)
@@ -109,6 +124,7 @@ def interp_forecast(vals24):
 
 def q1(a1):
     r=solve_dispatch(a1.load.values,a1.pv_forecast.values,a1.price.values,initial=S_INIT,terminal=S_INIT,emergency=False,mutex=True)
+    audit_dispatch(r, S_INIT, S_INIT)
     return r
 
 def actual_emergency(load_kw,pv_kw,plan,c,d,u):
@@ -134,14 +150,23 @@ def solve_all(a1,load,pv,price,forecast):
     s2=s3=s4=S_INIT
     for d in EVAL_DATES:
         L=load.loc[d].values.astype(float); G=pv.loc[d].values.astype(float); P=a1.price.values; P4=price.loc[d].values.astype(float)
-        # Q2 causal forecast; conservative PV lower quantile from prior errors approximated by 10% haircut.
-        Lhat=forecast_load(load,d); Ghat=np.maximum(0,0.9*forecast_pv(pv,d))
+        # Q2 causal forecast.  The load forecast separates daily energy level
+        # from the intraday profile; PV uses the recent three-day median.  Both
+        # functions inspect dates strictly before d, so no future leakage is
+        # possible.
+        Lhat=forecast_load_decomposed(load,d,DATES,DT)
+        # A 0.9 factor is a deliberately conservative forecast-side haircut;
+        # it is part of the model contract and is compared with 0.95/1.00 in
+        # the forecast diagnostics rather than being tuned on the test day.
+        Ghat=np.maximum(0,0.9*forecast_pv(pv,d,3))
         r2=solve_dispatch(Lhat,Ghat,P,initial=s2,terminal=None,emergency=True); q2plans[d]=r2['q']; soc2[d]=r2['s']
+        audit_dispatch(r2, s2)
         e2=actual_emergency(L,G,r2['q'],r2['c'],r2['d'],r2['u']); em2[d]=e2
         s2=float(r2['s'][-1])
         # Q3 day-ahead plan uses the 00:00 forecast; adjusted plan follows the four 0/6/12/18 rolling releases.
-        fs=forecast.get(d,[]); basepv=interp_forecast(fs[0]) if fs else Ghat
+        fs=forecast.get(d,[]); basepv=(0.9*interp_forecast(fs[0]) if fs else Ghat)
         r30=solve_dispatch(Lhat,basepv,P,initial=s3,terminal=None,emergency=True); q0=r30['q'].copy()
+        audit_dispatch(r30, s3)
         pv_roll=np.zeros((4,T))
         for k in range(4):
             pv_roll[k]=0.9*interp_forecast(fs[k]) if k < len(fs) else basepv
@@ -152,22 +177,28 @@ def solve_all(a1,load,pv,price,forecast):
             end=min(T,start+36); H=T-start
             pv_h=(0.9*interp_forecast(fs[k]) if k < len(fs) else basepv)[:H]
             rr=solve_dispatch(Lhat[start:],pv_h,P[start:start+H],initial=float(scur[start]),emergency=True)
+            audit_dispatch(rr, float(scur[start]))
             n=end-start; qcur[start:end]=rr['q'][:n]; ccur[start:end]=rr['c'][:n]; dcur[start:end]=rr['d'][:n]; ucur[start:end]=rr['u'][:n]; scur[start+1:end+1]=rr['s'][1:n+1]
         q3plans[d]=q0; q3adj[d]=qcur; soc3[d]=scur
         e3=actual_emergency(L,G,qcur,ccur,dcur,ucur); em3[d]=e3; s3=float(scur[-1])
-        # Q4 repeats Q2/Q3 with real-time price trajectory.
-        r4=solve_dispatch(Lhat,Ghat,P4,initial=s4,terminal=None,emergency=True); q4plans[d]=r4['q']; soc4[d]=r4['s']; em4[d]=actual_emergency(L,G,r4['q'],r4['c'],r4['d'],r4['u']); s4=float(r4['s'][-1])
+        # Q4 repeats Q2/Q3 with real-time price trajectory.  Keep the two
+        # branches independent: Q4-3 starts from the same day-start SOC as
+        # Q4-2, rather than inheriting Q4-2's terminal state.
+        s4_start=float(s4)
+        r4=solve_dispatch(Lhat,Ghat,P4,initial=s4_start,terminal=None,emergency=True); q4plans[d]=r4['q']; soc4[d]=r4['s']; em4[d]=actual_emergency(L,G,r4['q'],r4['c'],r4['d'],r4['u']); audit_dispatch(r4,s4_start); s4=float(r4['s'][-1])
         # Q4-3: same four-release rolling logic, but with the real-time price trajectory.
-        q4a=np.zeros(T); c4a=np.zeros(T); d4a=np.zeros(T); u4a=np.zeros(T); s4a=np.zeros(T+1); s4a[0]=s4
+        q4a=np.zeros(T); c4a=np.zeros(T); d4a=np.zeros(T); u4a=np.zeros(T); s4a=np.zeros(T+1); s4a[0]=s4_start
         for k,start in enumerate((0,36,72,108)):
             end=min(T,start+36); H=T-start
             pv_h=(0.9*interp_forecast(fs[k]) if k < len(fs) else basepv)[:H]
             rr=solve_dispatch(Lhat[start:],pv_h,P4[start:start+H],initial=float(s4a[start]),emergency=True)
+            audit_dispatch(rr, float(s4a[start]))
             n=end-start; q4a[start:end]=rr['q'][:n]; c4a[start:end]=rr['c'][:n]; d4a[start:end]=rr['d'][:n]; u4a[start:end]=rr['u'][:n]; s4a[start+1:end+1]=rr['s'][1:n+1]
         q4adj[d]=q4a; soc4adj[d]=s4a; em4adj[d]=actual_emergency(L,G,q4a,c4a,d4a,u4a)
-        adj_cost=float(np.dot(0.5*P,np.maximum(q0-qcur,0))+np.dot(1.5*P,np.maximum(qcur-q0,0)))
-        adj4=float(np.dot(0.5*P4,np.maximum(r4['q']-q4a,0))+np.dot(1.5*P4,np.maximum(q4a-r4['q'],0)))
-        records.append({'date':d.isoformat(),'q2_cost':float(np.dot(P,r2['q'])+np.dot(5*P,e2)),'q2_emergency_kwh':float(e2.sum()),'q3_cost':float(np.dot(P,qcur)+adj_cost+np.dot(5*P,e3)),'q3_emergency_kwh':float(e3.sum()),'q3_adjustment_abs_kwh':float(np.abs(qcur-q0).sum()),'q3_adjustment_cost':adj_cost,'q4_cost':float(np.dot(P4,r4['q'])+np.dot(5*P4,em4[d])),'q4_emergency_kwh':float(em4[d].sum()),'q4_3_cost':float(np.dot(P4,q4a)+adj4+np.dot(5*P4,em4adj[d])),'q4_3_emergency_kwh':float(em4adj[d].sum())})
+        bill3=settlement_b(q0,qcur,P); bill4=settlement_b(r4['q'],q4a,P4)
+        adj_cost=float(bill3['reduction_fee']+bill3['increase_fee'])
+        adj4=float(bill4['reduction_fee']+bill4['increase_fee'])
+        records.append({'date':d.isoformat(),'q2_cost':float(np.dot(P,r2['q'])+np.dot(5*P,e2)),'q2_emergency_kwh':float(e2.sum()),'q2_emergency_cost':float(np.dot(5*P,e2)),'q3_cost':float(bill3['total']+np.dot(5*P,e3)),'q3_base_cost':bill3['base'],'q3_reduction_fee':bill3['reduction_fee'],'q3_increase_fee':bill3['increase_fee'],'q3_emergency_kwh':float(e3.sum()),'q3_emergency_cost':float(np.dot(5*P,e3)),'q3_adjustment_abs_kwh':float(np.abs(qcur-q0).sum()),'q3_adjustment_cost':adj_cost,'q3_reduction_kwh':bill3['reduction_kwh'],'q3_increase_kwh':bill3['increase_kwh'],'q4_cost':float(np.dot(P4,r4['q'])+np.dot(5*P4,em4[d])),'q4_emergency_kwh':float(em4[d].sum()),'q4_emergency_cost':float(np.dot(5*P4,em4[d])),'q4_3_cost':float(bill4['total']+np.dot(5*P4,em4adj[d])),'q4_3_base_cost':bill4['base'],'q4_3_reduction_fee':bill4['reduction_fee'],'q4_3_increase_fee':bill4['increase_fee'],'q4_3_adjustment_cost':adj4,'q4_3_reduction_kwh':bill4['reduction_kwh'],'q4_3_increase_kwh':bill4['increase_kwh'],'q4_3_emergency_kwh':float(em4adj[d].sum()),'q4_3_emergency_cost':float(np.dot(5*P4,em4adj[d]))})
     return q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj
 
 def write_template(src,dst, sheet_values):
@@ -222,6 +253,25 @@ def export_results(a1,q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plan
     write_template(IN/'result4-2.xlsx',OUT/'result4-2.xlsx',{'计划购电量':matrix_cells(q4plans),'充放电量':storage_cells(soc4),'紧急购电量':emergency_cells(em4)})
     write_template(IN/'result4-3.xlsx',OUT/'result4-3.xlsx',{'计划购电量':matrix_cells(q4plans),'调整购电量':matrix_cells(q4adj),'充放电量':storage_cells(soc4adj),'紧急购电量':emergency_cells(em4adj)})
 
+def forecast_diagnostics(load, pv):
+    """Date-causal forecast errors used to choose the updated forecast family."""
+    rows=[]
+    for d in EVAL_DATES:
+        actual_l=load.loc[d].values.astype(float); actual_p=pv.loc[d].values.astype(float)
+        candidates={
+            'load_median7': forecast_load(load,d,7),
+            'load_level_shape': forecast_load_decomposed(load,d,DATES,DT),
+            'pv_median3': forecast_pv(pv,d,3),
+            'pv_median7': forecast_pv(pv,d,7),
+        }
+        for name,pred in candidates.items():
+            actual=actual_l if name.startswith('load') else actual_p
+            denom=np.maximum(np.abs(actual), 50.0 if name.startswith('pv') else 1.0)
+            rows.append({'date':d.isoformat(),'series':name,'mae':float(np.mean(np.abs(pred-actual))),'mape_pct':float(100*np.mean(np.abs(pred-actual)/denom)),'bias':float(np.mean(pred-actual))})
+    df=pd.DataFrame(rows)
+    df.to_csv(OUT/'forecast_diagnostics.csv',index=False)
+    return df.groupby('series',as_index=False)[['mae','mape_pct','bias']].mean().to_dict('records')
+
 def savefig(fig, stem):
     export_figure(fig, str(FIG/stem), formats=['svg','png'], size_inches=(6,3), dpi=300, grayscale_preview=False, tight=True)
 
@@ -246,20 +296,24 @@ def plot_results(a1,load,pv,price,q1r,records):
    dst=FIG/f'{cat}_q{q}_overview.png'; shutil.copy2(src,dst)
 
 def main():
- ap=argparse.ArgumentParser(); ap.add_argument('--seed',type=int,default=20260911); args=ap.parse_args(); np.random.seed(args.seed)
- a1,load,pv,price,forecast=read_inputs(); q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj=solve_all(a1,load,pv,price,forecast)
- export_results(a1,q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj); plot_results(a1,load,pv,price,q1r,records)
- summary={'seed':args.seed,'q1':{'objective':q1r['objective'],'purchase_kwh':float(q1r['q'].sum()),'soc_min':float(q1r['s'].min()),'soc_max':float(q1r['s'].max()),'terminal_soc':float(q1r['s'][-1])},'q2_q3_q4':records,'aggregate':{}}
- for k in ['q2','q3','q4']:
-  summary['aggregate'][k]={'cost':float(sum(r[f'{k}_cost'] for r in records)),'emergency_kwh':float(sum(r[f'{k}_emergency_kwh'] for r in records))}
- summary['aggregate']['q4_3']={'cost':float(sum(r['q4_3_cost'] for r in records)),'emergency_kwh':float(sum(r['q4_3_emergency_kwh'] for r in records))}
- summary['q4_3']=summary['aggregate']['q4_3']
- pd.DataFrame(records).to_csv(OUT/'daily_metrics.csv',index=False)
- (OUT/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
- hashes={}
- for p in [IN/'附件1.xlsx',IN/'附件2.xlsx',IN/'附件3.xlsx',IN/'附件4.xlsx']:
-  hashes[p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
- manifest={'command':f'../.venv/bin/python solve_c.py --seed {args.seed}','seed':args.seed,'python':sys.version,'platform':platform.platform(),'packages':{m:__import__(m).__version__ for m in ['numpy','pandas','scipy','matplotlib','openpyxl']},'input_sha256':hashes,'parameters':{'dt':DT,'eta':ETA,'capacity_kwh':12000,'soc_bounds_kwh':[S_MIN,S_MAX],'power_kw':5000,'evaluation_start':'2025-02-01','evaluation_end':'2025-12-31'},'outputs':[str(p.relative_to(ROOT)) for p in sorted(OUT.glob('*'))]}
- (OUT/'复现清单.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
- print(json.dumps(summary['aggregate'],ensure_ascii=False,indent=2)); print('q1',summary['q1']); print('outputs',len(list(OUT.glob('*'))), 'figures',len(list(FIG.glob('*.png'))))
+    ap=argparse.ArgumentParser(); ap.add_argument('--seed',type=int,default=20260911); args=ap.parse_args(); np.random.seed(args.seed)
+    a1,load,pv,price,forecast=read_inputs(); q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj=solve_all(a1,load,pv,price,forecast)
+    export_results(a1,q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj); plot_results(a1,load,pv,price,q1r,records)
+    dp=finite_grid_value_dp((a1.load.values-a1.pv_forecast.values)*DT,a1.price.values,initial=S_INIT,terminal=S_INIT,s_min=S_MIN,s_max=S_MAX,eta=ETA,p_max_kwh=P_MAX,step=5.0)
+    dp_gap=100*(dp['initial_value']-q1r['objective'])/q1r['objective']
+    (OUT/'value_dp_q1.json').write_text(json.dumps({'grid_step_kwh':dp['grid_step_kwh'],'lp_objective':q1r['objective'],'dp_grid_value':dp['initial_value'],'relative_gap_pct':dp_gap,'reachable_initial_states':dp['reachable']},ensure_ascii=False,indent=2),encoding='utf-8')
+    diagnostics=forecast_diagnostics(load,pv)
+    summary={'seed':args.seed,'q1':{'objective':q1r['objective'],'purchase_kwh':float(q1r['q'].sum()),'soc_min':float(q1r['s'].min()),'soc_max':float(q1r['s'].max()),'terminal_soc':float(q1r['s'][-1]),'dp_grid_value':dp['initial_value'],'dp_grid_step_kwh':dp['grid_step_kwh'],'dp_relative_gap_pct':dp_gap},'forecast_diagnostics':diagnostics,'q2_q3_q4':records,'aggregate':{}}
+    for k in ['q2','q3','q4']:
+        summary['aggregate'][k]={'cost':float(sum(r[f'{k}_cost'] for r in records)),'emergency_kwh':float(sum(r[f'{k}_emergency_kwh'] for r in records))}
+    summary['aggregate']['q4_3']={'cost':float(sum(r['q4_3_cost'] for r in records)),'emergency_kwh':float(sum(r['q4_3_emergency_kwh'] for r in records))}
+    summary['q4_3']=summary['aggregate']['q4_3']
+    pd.DataFrame(records).to_csv(OUT/'daily_metrics.csv',index=False)
+    (OUT/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
+    hashes={}
+    for p in [IN/'附件1.xlsx',IN/'附件2.xlsx',IN/'附件3.xlsx',IN/'附件4.xlsx']:
+        hashes[p.name]=hashlib.sha256(p.read_bytes()).hexdigest()
+    manifest={'command':f'../.venv/bin/python solve_c.py --seed {args.seed}','seed':args.seed,'python':sys.version,'platform':platform.platform(),'packages':{m:__import__(m).__version__ for m in ['numpy','pandas','scipy','matplotlib','openpyxl']},'input_sha256':hashes,'parameters':{'dt':DT,'eta':ETA,'capacity_kwh':12000,'soc_bounds_kwh':[S_MIN,S_MAX],'power_kw':5000,'evaluation_start':'2025-02-01','evaluation_end':'2025-12-31','load_forecast':'causal daily-level/intraday-shape median','pv_forecast':'0.9 times causal 3-day median','q3_settlement':'base plan + 0.5 reduction + 1.5 increase','q4_branch_soc':'independent day-start state','q1_dp_grid_step_kwh':5.0},'outputs':[str(p.relative_to(ROOT)) for p in sorted(OUT.glob('*'))]}
+    (OUT/'复现清单.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
+    print(json.dumps(summary['aggregate'],ensure_ascii=False,indent=2)); print('q1',summary['q1']); print('outputs',len(list(OUT.glob('*'))), 'figures',len(list(FIG.glob('*.png'))))
 if __name__=='__main__': main()

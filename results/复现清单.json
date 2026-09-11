@@ -26,16 +26,24 @@
     ],
     "power_kw": 5000,
     "evaluation_start": "2025-02-01",
-    "evaluation_end": "2025-12-31"
+    "evaluation_end": "2025-12-31",
+    "load_forecast": "causal daily-level/intraday-shape median",
+    "pv_forecast": "0.9 times causal 3-day median",
+    "q3_settlement": "base plan + 0.5 reduction + 1.5 increase",
+    "q4_branch_soc": "independent day-start state",
+    "q1_dp_grid_step_kwh": 5.0
   },
   "outputs": [
     "results/daily_metrics.csv",
+    "results/forecast_diagnostics.csv",
     "results/result1.xlsx",
     "results/result2.xlsx",
     "results/result3.xlsx",
     "results/result4-2.xlsx",
     "results/result4-3.xlsx",
+    "results/sensitivity_forecast.csv",
     "results/summary.json",
+    "results/value_dp_q1.json",
     "results/复现清单.json"
   ]
 }

@@ -4,3 +4,7 @@ __pycache__/
 rendered/
 c题-overleaf.zip
 *.tmp
+.local/experience_pdf/
+.local/docx_render_v2/
+.local/docx_render_v3/
+.local/docx_render_v4/
