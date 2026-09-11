@@ -14,18 +14,18 @@
   },
   "resource_bindings": [
     {
-      "source": "figures",
-      "destination": "figs",
-      "sha256": "690d01a6a63e586c1f2e53e21e6e45edbeec1c0f4ac3b3c7542c261d7ad2395e",
-      "hash_mode": "tree",
-      "bound_at": "2026-09-11T16:53:00.051399+00:00"
-    },
-    {
       "source": "solve_c.py",
       "destination": "code/solve_c.py",
-      "sha256": "18c2e79f52601728b77c1808e7cd7183c8a37ee5517c70d603bdbbd048e2cd3b",
+      "sha256": "1439de45b0e9bfb777d14ba996b4e9155e4033c6620566d6f1f39df325bb6291",
       "hash_mode": "content",
-      "bound_at": "2026-09-11T16:53:00.089385+00:00"
+      "bound_at": "2026-09-11T17:56:18.084147+00:00"
+    },
+    {
+      "source": "figures",
+      "destination": "figs",
+      "sha256": "6feeb6cf518ddd0da37aae1565ecc0ecbcf113b6c89d72d11c1337d368d97d8d",
+      "hash_mode": "tree",
+      "bound_at": "2026-09-11T17:59:44.749881+00:00"
     }
   ],
   "created_at": "2026-09-11T14:52:20.964373+00:00"

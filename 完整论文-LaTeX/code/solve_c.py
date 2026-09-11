@@ -214,21 +214,23 @@ def col_letter(n):
         n,rem=divmod(n-1,26); s=chr(65+rem)+s
     return s
 
-def export_results(a1,q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj):
+def export_results(a1,price,q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj):
     def q1_purchase_cells():
       return {f'B{t+2}':q1r['q'][t] for t in range(T)}
     def q1_storage_cells():
       c={}
+      # Official template columns are period, charge, discharge,
+      # publication time and SOC.  Keep the time column untouched.
       for j in range(6):
-       st=j*24; c[f'C{j+2}']=q1r['c'][st:st+24].sum(); c[f'D{j+2}']=q1r['d'][st:st+24].sum()
+       st=j*24; c[f'B{j+2}']=q1r['c'][st:st+24].sum(); c[f'C{j+2}']=q1r['d'][st:st+24].sum()
       c['E2']=q1r['s'][0]; c['E3']=q1r['s'][-1]; return c
     write_template(IN/'result1.xlsx',OUT/'result1.xlsx',{'计划购电量':q1_purchase_cells(),'充放电量':q1_storage_cells()})
-    def matrix_cells(plans):
+    def matrix_cells(plans, price_by_date):
       c={}
       for i,d in enumerate(EVAL_DATES,start=2):
        c[f'A{i}']=d
        for t in range(T): c[f'{col_letter(t+2)}{i}']=plans[d][t]
-       c[f'EP{i}']=plans[d].sum(); c[f'EQ{i}']=np.dot(a1.price.values,plans[d])
+       c[f'EP{i}']=plans[d].sum(); c[f'EQ{i}']=np.dot(price_by_date[d],plans[d])
       return c
     def storage_cells(socs):
       c={}
@@ -248,10 +250,12 @@ def export_results(a1,q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plan
          c[f'A{row}']=d; c[f'B{row}']=f'{st*10//60}:{st*10%60:02d}-{t*10//60}:{t*10%60:02d}'; c[f'C{row}']=e[st:t].sum(); row+=1
         else:t+=1
       return c
-    write_template(IN/'result2.xlsx',OUT/'result2.xlsx',{'计划购电量':matrix_cells(q2plans),'充放电量':storage_cells(soc2),'紧急购电量':emergency_cells(em2)})
-    write_template(IN/'result3.xlsx',OUT/'result3.xlsx',{'计划购电量':matrix_cells(q3plans),'调整购电量':matrix_cells(q3adj),'充放电量':storage_cells(soc3),'紧急购电量':emergency_cells(em3)})
-    write_template(IN/'result4-2.xlsx',OUT/'result4-2.xlsx',{'计划购电量':matrix_cells(q4plans),'充放电量':storage_cells(soc4),'紧急购电量':emergency_cells(em4)})
-    write_template(IN/'result4-3.xlsx',OUT/'result4-3.xlsx',{'计划购电量':matrix_cells(q4plans),'调整购电量':matrix_cells(q4adj),'充放电量':storage_cells(soc4adj),'紧急购电量':emergency_cells(em4adj)})
+    fixed_prices={d:a1.price.values for d in EVAL_DATES}
+    dynamic_prices={d:price.loc[d].values.astype(float) for d in EVAL_DATES}
+    write_template(IN/'result2.xlsx',OUT/'result2.xlsx',{'计划购电量':matrix_cells(q2plans,fixed_prices),'充放电量':storage_cells(soc2),'紧急购电量':emergency_cells(em2)})
+    write_template(IN/'result3.xlsx',OUT/'result3.xlsx',{'计划购电量':matrix_cells(q3plans,fixed_prices),'调整购电量':matrix_cells(q3adj,fixed_prices),'充放电量':storage_cells(soc3),'紧急购电量':emergency_cells(em3)})
+    write_template(IN/'result4-2.xlsx',OUT/'result4-2.xlsx',{'计划购电量':matrix_cells(q4plans,dynamic_prices),'充放电量':storage_cells(soc4),'紧急购电量':emergency_cells(em4)})
+    write_template(IN/'result4-3.xlsx',OUT/'result4-3.xlsx',{'计划购电量':matrix_cells(q4plans,dynamic_prices),'调整购电量':matrix_cells(q4adj,dynamic_prices),'充放电量':storage_cells(soc4adj),'紧急购电量':emergency_cells(em4adj)})
 
 def forecast_diagnostics(load, pv):
     """Date-causal forecast errors used to choose the updated forecast family."""
@@ -298,7 +302,7 @@ def plot_results(a1,load,pv,price,q1r,records):
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--seed',type=int,default=20260911); args=ap.parse_args(); np.random.seed(args.seed)
     a1,load,pv,price,forecast=read_inputs(); q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj=solve_all(a1,load,pv,price,forecast)
-    export_results(a1,q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj); plot_results(a1,load,pv,price,q1r,records)
+    export_results(a1,price,q1r,records,q2plans,soc2,em2,q3plans,q3adj,soc3,em3,q4plans,q4adj,soc4,soc4adj,em4,em4adj); plot_results(a1,load,pv,price,q1r,records)
     dp=finite_grid_value_dp((a1.load.values-a1.pv_forecast.values)*DT,a1.price.values,initial=S_INIT,terminal=S_INIT,s_min=S_MIN,s_max=S_MAX,eta=ETA,p_max_kwh=P_MAX,step=5.0)
     dp_gap=100*(dp['initial_value']-q1r['objective'])/q1r['objective']
     (OUT/'value_dp_q1.json').write_text(json.dumps({'grid_step_kwh':dp['grid_step_kwh'],'lp_objective':q1r['objective'],'dp_grid_value':dp['initial_value'],'relative_gap_pct':dp_gap,'reachable_initial_states':dp['reachable']},ensure_ascii=False,indent=2),encoding='utf-8')

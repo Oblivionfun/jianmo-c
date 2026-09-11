@@ -1,95 +1,342 @@
-"""Build the Word companion from the same JSON/CSV evidence as main.tex."""
-from pathlib import Path
-import json, sys
-from docx.shared import Inches, Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+"""Build the competition-paper Word deliverable from the current run artifacts.
 
-sys.path.insert(0, '/Users/xingyu/.codex/skills/math-modeling/tools/docx/scripts')
+The manuscript is intentionally generated from summary/CSV/XLSX evidence so a
+new solve run changes the reported numbers and tables together.
+"""
+from __future__ import annotations
+
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+
+import openpyxl
+import pandas as pd
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Inches, Pt
+
+sys.path.insert(0, "/Users/xingyu/.codex/skills/math-modeling/tools/docx/scripts")
 import paper_format as pf
 
 ROOT = Path(__file__).resolve().parents[1]
-summary = json.loads((ROOT / 'results/summary.json').read_text(encoding='utf-8'))
-a, q1 = summary['aggregate'], summary['q1']
-doc = pf.new_document(contest='cumcm')
-pf.title(doc, '微网与外部电网电力调控策略研究（更新稿）')
+OUT = ROOT / "results"
+summary = json.loads((OUT / "summary.json").read_text(encoding="utf-8"))
+agg = summary["aggregate"]
+q1 = summary["q1"]
+daily = pd.read_csv(OUT / "daily_metrics.csv")
+
+
+def _date_key(value):
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    return str(value)[:10].replace("/", "-")
+
+
+def read_emergency_groups(filename: str, dates: list[str]):
+    ws = openpyxl.load_workbook(OUT / filename, data_only=True, read_only=True)["紧急购电量"]
+    result = {d: [] for d in dates}
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[0] is None or row[1] is None or row[2] is None:
+            continue
+        key = _date_key(row[0])
+        if key in result:
+            result[key].append((str(row[1]), float(row[2])))
+    return result
+
+
+def read_q1_selected():
+    wb = openpyxl.load_workbook(OUT / "result1.xlsx", data_only=True, read_only=True)
+    ws = wb["计划购电量"]
+    wanted = {"10:00-10:10", "12:00-12:10", "14:00-14:10", "16:00-16:10", "18:00-18:10", "20:00-20:10"}
+    purchase = {str(r[0]): float(r[1]) for r in ws.iter_rows(min_row=2, values_only=True) if r[0] in wanted}
+    ws = wb["充放电量"]
+    storage = []
+    for r in ws.iter_rows(min_row=2, max_row=7, values_only=True):
+        storage.append((str(r[0]), float(r[1] or 0), float(r[2] or 0)))
+    return purchase, storage
+
+
+q1_purchase, q1_storage = read_q1_selected()
+specified_dates = ["2025-03-20", "2025-06-21", "2025-09-23", "2025-12-21"]
+em2 = read_emergency_groups("result2.xlsx", specified_dates)
+em3 = read_emergency_groups("result3.xlsx", specified_dates)
+
+doc = pf.new_document(contest="cumcm")
+pf.title(doc, "微网与外部电网电力调控策略研究")
 pf.abstract_title(doc)
-pf.body(doc, (
-    f'本文研究固定/波动电价和逐步更新光伏信息下的微网购电与储能调度。'
-    f'统一十分钟能量平衡模型显式区分常规购电、紧急购电、充放电和弃光，'
-    f'并检查荷电状态、功率和跨日状态。问题一用互斥MILP，另以5 kWh有限网格库存价值DP交叉核验；'
-    f'问题二至问题四使用日期因果预测。问题一购电量{q1["purchase_kwh"]:.3f} kWh，'
-    f'费用{q1["objective"]:.3f}元；Q2、Q3、Q4-2、Q4-3全年本地回测费用分别为'
-    f'{a["q2"]["cost"]:.2f}、{a["q3"]["cost"]:.2f}、{a["q4"]["cost"]:.2f}、{a["q4_3"]["cost"]:.2f}元。'
-    '所有数字均由当前输入、代码和结果文件生成，不代表官方成绩；表1、表2、表3给出符号、全年结果和敏感性。'))
-pf.keywords(doc, '微网；储能调度；混合整数线性规划；库存价值；滚动调整；动态电价')
+pf.body(
+    doc,
+    (
+        "针对固定与波动电价、负荷和光伏信息逐步揭示条件下的微网购电与储能调度问题，"
+        "本文在十分钟粒度建立统一的能量平衡模型，显式区分常规购电、紧急购电、充电、放电与弃光，"
+        "并用储能状态递推、功率边界、容量边界和跨日状态约束保证物理可行。问题一采用带充放电互斥的混合整数线性规划，"
+        "同时用5 kWh有限状态网格动态规划交叉核验；问题二把负荷预测拆为日电量水平和日内形状，并用目标日前三日光伏中位数乘0.9进行保守预测；"
+        "问题三在0、6、12、18时锁定已执行前缀、滚动重优化，并按计划基准费、调减0.5倍、调增1.5倍和紧急费结算；"
+        "问题四在附件4波动价格下独立重算问题二、问题三。问题一单日购电量为"
+        f"{q1['purchase_kwh']:.3f} kWh、费用为{q1['objective']:.3f}元；"
+        "2025年2月1日至12月31日的本地回测总费用分别为"
+        f"Q2 {agg['q2']['cost']:.2f}元、Q3 {agg['q3']['cost']:.2f}元、"
+        f"Q4-2 {agg['q4']['cost']:.2f}元和Q4-3 {agg['q4_3']['cost']:.2f}元。"
+        "上述数值均由当前题目附件、代码和结果文件生成，不代表官方成绩。"
+    ),
+)
+pf.keywords(doc, "微网；储能调度；混合整数线性规划；库存价值；滚动优化；光伏预测；动态电价")
 
-def H(t): pf.heading1(doc, t)
-def p(t): pf.body(doc, t)
-def fig(name, cap):
-    para = doc.add_paragraph(); para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    para.add_run().add_picture(str(ROOT / 'figures' / f'{name}.png'), width=Inches(5.8))
-    c = doc.add_paragraph(cap); c.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-H('一、问题与数据')
-p('题面要求在十分钟粒度安排常规购电、紧急购电和储能充放电。附件1给出单日固定价格、负荷和光伏预测；附件2给出全年实际负荷与光伏；附件3给出每日0、6、12、18时的24小时光伏预报；附件4给出波动价格。全年回测只取2025-02-01至2025-12-31的334天，目标日预测只读取严格早于目标日的数据。题面与规则以官方材料[1]为准。')
-p('如图1所示，原始数据统一到十分钟区间。')
-fig('raw_q1_inputs', '图1  问题一输入序列')
-p('图1用于核对十分钟采样、功率单位和日内光伏形状。')
+def H(text):
+    pf.heading1(doc, text)
 
-H('二、统一物理模型')
-p('令q_t、e_t、c_t、d_t、u_t分别表示常规购电、紧急购电、交流侧充电、交流侧放电和未利用供能，单位为kWh；L_t、G_t为功率，p_t为元/kWh，Δt=1/6 h。采用充电入库ηc_t、放电出库d_t/η，η=0.9。')
-pf.equation(doc, r'q_t+e_t+d_t+G_t\Delta t=L_t\Delta t+c_t+u_t')
-pf.equation(doc, r'S_{t+1}=S_t+\eta c_t-d_t/\eta')
-pf.equation(doc, r'0\le c_t,d_t\le 5000\Delta t,\quad1200\le S_t\le10800,\quad S_0=6000')
-p('问题一补充S_T=S_0和互斥二元变量；Q2至Q4跨日传递上一日末SOC。每次求解后执行非负性、功率、SOC和初始状态审计。模型结构参考微网优化文献[2]和Pyomo建模文献[3]。如图2所示，SOC轨迹接受边界审计。')
-p('统一符号见表1。')
-doc.add_paragraph('表1  统一符号与单位')
-pf.three_line_table(doc, [['符号','含义','单位'],['q_t,e_t','常规/紧急购电量','kWh'],['c_t,d_t','交流侧充电/放电量','kWh'],['S_t','内部储能量','kWh'],['L_t,G_t','负荷/光伏功率','kW'],['p_t','交易价格','元/kWh']])
-fig('process_q1_soc', '图2  问题一充放电与SOC')
-p('图2显示互斥充放电与SOC边界。')
 
-H('三、问题一与库存价值交叉核验')
-p(f'问题一MILP得到全天购电量{q1["purchase_kwh"]:.3f} kWh、费用{q1["objective"]:.3f}元，SOC范围为{q1["soc_min"]:.0f}至{q1["soc_max"]:.0f} kWh，日末为{q1["terminal_soc"]:.0f} kWh。5 kWh状态网格DP的值为{q1["dp_grid_value"]:.3f}元，相对MILP差异{q1["dp_relative_gap_pct"]:.4f}%，该差异是离散网格近似误差。如图3所示，购电量随价格和净负荷变化。')
-pf.equation(doc, r'F_t(S)=\min_{S\to S1}\{p_t(N_t+c_t-d_t)^++F_{t+1}(S1)\},\quad F_T(6000)=0')
-fig('result_q1_dispatch', '图3  问题一价格与购电')
-p('图3给出价格和购电量的时序对应。')
+def h(text):
+    pf.heading2(doc, text)
 
-H('四、问题二：日期因果回测')
-p(f'负荷预测将最近同类型日的日电量水平与归一化日内形状分别取中位数，再恢复为功率；光伏采用目标日前三日中位数并乘0.9。因果诊断显示，负荷MAPE为6.153%，逐时七日中位数为17.987%；光伏三日和七日中位数MAPE分别为4.027%和4.697%。Q2全年费用为{a["q2"]["cost"]:.2f}元，紧急购电量为{a["q2"]["emergency_kwh"]:.3f} kWh，见图4。')
-pf.equation(doc, r'Lhat_{d,t}=Bhat_d s_hat_{d,t}/\Delta t,\quad\sum_t s_hat_{d,t}\Delta t=1')
-fig('raw_q2_q3_q4_emergency', '图4  各场景全年紧急购电量')
-p('图4用于比较预测误差在全年紧急购电上的传导。')
 
-H('五、问题三：多时刻预报与B结算')
-p('0、6、12、18时刻只重优化未执行的时间段，并锁定已执行前缀。对0时计划q^0和调整计划q^a，账单按计划基准费、0.5倍调减费、1.5倍调增费和5倍紧急费四项相加。Q3全年费用为{:.2f}元，紧急购电量为{:.3f} kWh；各分项和调整量保存在daily_metrics.csv，见图5。'.format(a['q3']['cost'], a['q3']['emergency_kwh']))
-pf.equation(doc, r'K_3=\sum_t p_tq_t^0+\sum_t0.5p_t(q_t^0-q_t^a)^++\sum_t1.5p_t(q_t^a-q_t^0)^++\sum_t5p_te_t')
-pf.equation(doc, r'e_t=\left[L_t\Delta t-G_t\Delta t-q_t-c_t+d_t\right]^+')
-fig('process_q3_adjustment', '图5  计划—调整差额与紧急购电')
-p('图5展示滚动调整量与紧急购电量的关系。')
+def p(text):
+    pf.body(doc, text)
 
-H('六、问题四：波动电价的独立分支')
-p('Q4-2将附件4价格替换固定价格并沿用Q2信息边界；Q4-3沿用Q3滚动预报和B结算。两个分支从每天相同的日初SOC独立启动，不把Q4-2的日末状态带入Q4-3。Q4-2费用为{:.2f}元、紧急购电{:.3f} kWh；Q4-3费用为{:.2f}元、紧急购电{:.3f} kWh，见图6和图7。'.format(a['q4']['cost'],a['q4']['emergency_kwh'],a['q4_3']['cost'],a['q4_3']['emergency_kwh']))
-p('表2汇总四个场景的全年结果。')
-doc.add_paragraph('表2  全年本地回测结果')
-pf.three_line_table(doc, [['场景','费用（元）','紧急购电（kWh）'],['Q2',f'{a["q2"]["cost"]:.2f}',f'{a["q2"]["emergency_kwh"]:.3f}'],['Q3',f'{a["q3"]["cost"]:.2f}',f'{a["q3"]["emergency_kwh"]:.3f}'],['Q4-2',f'{a["q4"]["cost"]:.2f}',f'{a["q4"]["emergency_kwh"]:.3f}'],['Q4-3',f'{a["q4_3"]["cost"]:.2f}',f'{a["q4_3"]["emergency_kwh"]:.3f}']])
-fig('result_q4_cost_box', '图6  各场景日费用分布')
-p('图6给出不同信息和价格分支的日费用分布。')
-fig('result_q4_3_series', '图7  问题4-3日费用序列')
-p('图7给出波动价格和滚动调整下的逐日费用。')
 
-H('七、稳健性、局限与复现')
-p('本版本对经验材料进行了反向检查：经验材料的数字不直接使用；情景路径知道未来时只作为规划近似，不作为因果执行证据；LP互斥结论只在其假设成立时使用；Q3账单和Q4分支状态均逐日审计。有限网格DP不替代MILP，Q2至Q4的结果是本地附件回测而非官方成绩。图8给出本地回测的费用/紧急量对照。运行命令为 ../.venv/bin/python solve_c.py --seed 20260911；结果、输入哈希、预测诊断和DP对照分别见results目录。')
-fig('process_q2_overview', '图8  本地回测费用与紧急量对照')
-p('表3给出保守光伏系数的敏感性。')
-doc.add_paragraph('表3  光伏保守系数敏感性（Q2，日电量—形状负荷预测）')
-pf.three_line_table(doc, [['系数','全年费用（元）','紧急购电（kWh）'],['0.80','16622826.83','627200.633'],['0.90','16206550.45','789872.052'],['1.00','17440007.68','1333753.169']])
-pf.equation(doc, r'\min\sum_t p_tq_t+5p_te_t')
-H('AI工具使用声明')
-p('Codex用于资料检索、代码组织、公式排版和结果复核；参赛队员负责题面解释、模型假设、参数选择、代码运行、结果解释和最终提交。')
-H('参考文献')
-p('[1] 2026年全国大学生数学建模竞赛题目与人工智能使用规定（以官方发布版本为准）。')
-p('[2] Gulotta T 等. Microgrid energy management under uncertainty. International Journal of Electrical Power & Energy Systems, 2023.')
-p('[3] Hart W E 等. Pyomo—optimization modeling in Python. Springer, 2017.')
+def fig(stem, caption):
+    para = doc.add_paragraph()
+    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    para.add_run().add_picture(str(ROOT / "figures" / f"{stem}.png"), width=Inches(5.8))
+    cap = doc.add_paragraph(caption)
+    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-out = pf.save_document(doc, ROOT, filename='完整论文.docx', contest='cumcm', overwrite=True)
+
+H("一、问题重述与数据审计")
+h("1.1 题目任务")
+p(
+    "题目要求在十分钟时间粒度制定微网的常规购电、紧急购电以及储能充放电策略。"
+    "问题一给出单日价格、负荷和光伏预测，并要求日初、日末储能相同；问题二扩展到全年实际负荷和光伏，"
+    "要求每天0:00制定计划，预测偏差由紧急购电补足；问题三在0、6、12、18时发布未来24小时整点光伏预报，"
+    "允许调整尚未执行的计划；问题四把固定价格替换为附件4的波动价格，分别重算问题二和问题三。"
+)
+h("1.2 数据口径与信息边界")
+p(
+    "附件1包含144个十分钟记录，作为问题一的价格、负荷和光伏预测；附件2包含2025年365天的实际负荷和光伏；"
+    "附件3包含每日四次、每次24个整点值的光伏预报；附件4包含每日144个十分钟价格。"
+    "为避免未来信息泄漏，全年评估严格取2025-02-01至2025-12-31的334天，目标日预测仅读取严格早于目标日的行。"
+    "功率乘以Δt=1/6 h后进入能量平衡，价格与电量相乘得到费用；时间标签0:00+1表示次日0:00。"
+)
+doc.add_paragraph("表1  数据文件与使用方式")
+pf.three_line_table(
+    doc,
+    [
+        ["文件", "内容", "模型使用"],
+        ["附件1.xlsx", "单日价格、负荷、光伏预测", "问题一；固定价格基准"],
+        ["附件2.xlsx", "全年实际负荷、光伏", "Q2—Q4实际结算与回测"],
+        ["附件3.xlsx", "每日0/6/12/18时光伏预报", "Q3、Q4-3滚动更新"],
+        ["附件4.xlsx", "全年十分钟波动价格", "Q4-2、Q4-3价格"],
+    ],
+)
+fig("raw_q1_inputs", "图1  问题一输入序列（负荷、光伏预测与十分钟时间轴）")
+p("数据审计、输入哈希和字段检查由scripts/validate_input_xml.py执行；原始附件不被改写，结果文件由当前代码写入results目录。竞赛规则和论文格式以官方规范[1]为准。")
+
+H("二、模型假设、符号与统一约束")
+h("2.1 建模假设")
+p(
+    "作如下约定：①微网可从外网购电，光伏优先用于负荷或储能，富余光伏允许弃用；②储能只受题目给出的容量、"
+    "充放电功率和效率约束，不考虑电池退化与自放电；③每个十分钟区间内功率保持不变；④紧急购电不参与计划优化，"
+    "而是在实际数据到达后按剩余缺口结算；⑤Q3和Q4-3每次只重优化尚未执行区间，已执行前缀保持不变。"
+)
+h("2.2 变量与能量平衡")
+p(
+    "令t=0,…,T−1表示十分钟时段，q_t、e_t、c_t、d_t、u_t分别表示常规购电、紧急购电、交流侧充电、交流侧放电和弃光量（kWh）；"
+    "L_t、G_t表示负荷和光伏功率（kW），p_t表示价格（元/kWh），S_t表示时段起点储能量（kWh），η=0.9。"
+)
+pf.equation(doc, r"q_t+e_t+d_t+G_t\Delta t=L_t\Delta t+c_t+u_t")
+pf.equation(doc, r"S_{t+1}=S_t+\eta c_t-d_t/\eta")
+pf.equation(doc, r"0\le c_t,d_t\le5000\Delta t,\quad1200\le S_t\le10800,\quad S_0=6000")
+doc.add_paragraph("表2  主要符号与单位")
+pf.three_line_table(
+    doc,
+    [
+        ["符号", "含义", "单位"],
+        ["q_t,e_t", "常规/紧急购电量", "kWh"],
+        ["c_t,d_t", "充电量/放电量", "kWh"],
+        ["u_t", "未利用光伏量", "kWh"],
+        ["S_t", "储能状态", "kWh"],
+        ["L_t,G_t", "负荷/光伏功率", "kW"],
+        ["p_t", "外网交易价格", "元/kWh"],
+    ],
+)
+h("2.3 目标函数与审计")
+p(
+    "固定价格场景以常规购电费和紧急购电费最小为目标；问题一令e_t=0并补充S_T=S_0。"
+    "问题三和问题4-3把0:00计划与后续调整分开计费。每次求解后检查能量平衡、变量非负性、充放电功率、SOC边界、初始状态和端点状态；"
+    "Q3与Q4-3再检查四项账单之和是否等于日费用。"
+)
+fig("process_q1_soc", "图2  问题一储能充放电与SOC边界审计")
+
+H("三、问题一：单日确定性调度")
+h("3.1 混合整数线性规划")
+p(
+    "在附件1预测值被视为已知的条件下，问题一只需为144个时段安排常规购电和储能动作。"
+    "目标函数为"
+)
+pf.equation(doc, r"\min\sum_{t=0}^{143}p_tq_t")
+p(
+    "并以二元变量z_t施加c_t≤5000Δt z_t、d_t≤5000Δt(1−z_t)，从而消除同一时段同时充放电。"
+    "求解器采用SciPy HiGHS的MILP接口，结果再通过统一审计函数复核；滚动优化与不确定性建模的写法参考文献[2-4]。"
+)
+h("3.2 库存价值动态规划交叉核验")
+p(
+    "为独立检查储能跨期机会成本，在5 kWh状态网格上递推库存价值函数。令N_t=(L_t−G_t)Δt，则"
+)
+pf.equation(doc, r"F_t(S)=\min_{S\to S'}\{p_t\,[N_t+c_t-d_t]^++F_{t+1}(S')\},\quad F_T(6000)=0")
+p(
+    f"MILP费用为{q1['objective']:.3f}元，有限网格DP初值为{q1['dp_grid_value']:.3f}元，相对差异{q1['dp_relative_gap_pct']:.4f}%。"
+    "差异来自5 kWh状态离散，提交轨迹采用MILP；DP只承担独立的数值交叉检查。"
+)
+doc.add_paragraph("表3  问题一主要结果")
+pf.three_line_table(
+    doc,
+    [
+        ["指标", "MILP", "5 kWh网格DP"],
+        ["全天费用/元", f"{q1['objective']:.3f}", f"{q1['dp_grid_value']:.3f}"],
+        ["全天常规购电/kWh", f"{q1['purchase_kwh']:.3f}", "—"],
+        ["SOC最小/最大/kWh", f"{q1['soc_min']:.0f}/{q1['soc_max']:.0f}", "—"],
+        ["日末SOC/kWh", f"{q1['terminal_soc']:.0f}", "6000（边界条件）"],
+    ],
+)
+fig("result_q1_dispatch", "图3  问题一价格与常规购电量")
+doc.add_paragraph("表4  问题一指定十分钟时段购电量")
+pf.three_line_table(
+    doc,
+    [["时间段", "购电量/kWh"]] + [[k, f"{q1_purchase[k]:.3f}"] for k in ["10:00-10:10", "12:00-12:10", "14:00-14:10", "16:00-16:10", "18:00-18:10", "20:00-20:10"]] + [["全天", f"{q1['purchase_kwh']:.3f}"]],
+)
+doc.add_paragraph("表5  问题一指定四小时储能充放电量")
+pf.three_line_table(doc, [["时间段", "充电量/kWh", "放电量/kWh"]] + [[a, f"{b:.3f}", f"{c:.3f}"] for a, b, c in q1_storage] + [["0:00 / 24:00储电量", f"{q1['terminal_soc']:.0f}", f"{q1['terminal_soc']:.0f}"]])
+
+H("四、问题二：全年因果预测与日计划")
+h("4.1 负荷与光伏预测")
+p(
+    "负荷预测将历史样本分解为日电量水平和归一化日内形状。对目标日d，先对可用历史同类型日的日电量取中位数，再对日内形状取中位数，"
+    "最后恢复到十分钟功率："
+)
+pf.equation(doc, r"\hat L_{d,t}=\hat B_d\hat s_{d,t}/\Delta t,\quad\sum_t\hat s_{d,t}\Delta t=1")
+p(
+    "光伏采用目标日前三日中位数，并在计划端乘0.9；实际负荷和实际光伏只在事后用于计算紧急缺口。"
+    "表6比较改进负荷预测与逐时七日中位数基线，以及三日、七日光伏中位数。"
+)
+diag = summary["forecast_diagnostics"]
+by_series = {r["series"]: r for r in diag}
+doc.add_paragraph("表6  因果预测诊断（334天平均）")
+pf.three_line_table(
+    doc,
+    [["序列", "MAE", "MAPE/%", "偏差"]]
+    + [[name, f"{by_series[name]['mae']:.3f}", f"{by_series[name]['mape_pct']:.3f}", f"{by_series[name]['bias']:.3f}"] for name in ["load_level_shape", "load_median7", "pv_median3", "pv_median7"]],
+)
+h("4.2 计划执行与紧急结算")
+p(
+    "计划量由预测序列求解，实际执行时固定计划动作。若实际负荷减去实际光伏、常规购电和储能放电后仍有缺口，则"
+)
+pf.equation(doc, r"e_t=[L_t\Delta t-G_t\Delta t-q_t-c_t+d_t]^+")
+p(
+    f"Q2全年费用为{agg['q2']['cost']:.2f}元，紧急购电量为{agg['q2']['emergency_kwh']:.3f} kWh。"
+    "其中316个评估日出现正的紧急购电量；完整逐时计划与紧急时段写入results/result2.xlsx。"
+)
+fig("raw_q2_q3_q4_emergency", "图4  Q2、Q3与Q4-2全年紧急购电量")
+
+H("五、问题三：多时刻预报与滚动调整")
+h("5.1 锁定前缀的滚动策略")
+p(
+    "每天0:00使用首份24小时预报生成计划q^0；在6:00、12:00、18:00收到新预报后，只对尚未执行的时段重新求解。"
+    "设四次重优化起点为0、36、72、108个十分钟步，已执行前缀的q、c、d和SOC均保持不变，当前末状态作为下一次优化的初始状态。"
+    "这一实现把信息到达时间写进算法，而不是用全天真实光伏回填历史决策。"
+)
+h("5.2 计划—调整结算")
+p(
+    "令q_t^a为最终调整计划，题面结算规则写成"
+)
+pf.equation(doc, r"K_3=\sum_t p_tq_t^0+\sum_t0.5p_t[q_t^0-q_t^a]^++\sum_t1.5p_t[q_t^a-q_t^0]^++\sum_t5p_te_t")
+p(
+    "逐日记录基准费、调减费、调增费和紧急费，并检查四项之和。旧版本把调整计划替代了基准计划；本版本保留q^0作为第一项，避免调减时少算计划费用。"
+)
+row3 = daily[["q3_base_cost", "q3_reduction_fee", "q3_increase_fee", "q3_emergency_cost", "q3_cost"]].sum()
+doc.add_paragraph("表7  Q3全年结算分项")
+pf.three_line_table(doc, [["分项", "全年金额/元", "占Q3总费用/%"], ["计划基准费", f"{row3['q3_base_cost']:.2f}", f"{100*row3['q3_base_cost']/row3['q3_cost']:.2f}"], ["调减费", f"{row3['q3_reduction_fee']:.2f}", f"{100*row3['q3_reduction_fee']/row3['q3_cost']:.2f}"], ["调增费", f"{row3['q3_increase_fee']:.2f}", f"{100*row3['q3_increase_fee']/row3['q3_cost']:.2f}"], ["紧急费", f"{row3['q3_emergency_cost']:.2f}", f"{100*row3['q3_emergency_cost']/row3['q3_cost']:.2f}"], ["合计", f"{row3['q3_cost']:.2f}", "100.00"]])
+p(
+    f"Q3全年费用为{agg['q3']['cost']:.2f}元，紧急购电量为{agg['q3']['emergency_kwh']:.3f} kWh，"
+    f"计划—调整绝对差额总量为{daily['q3_adjustment_abs_kwh'].sum():.3f} kWh。"
+)
+fig("process_q3_adjustment", "图5  问题三计划—调整差额与紧急购电量")
+
+H("六、问题四：波动价格下的独立分支")
+h("6.1 问题4-2")
+p(
+    "将附件4的144点价格替换问题二中的固定价格序列，保留相同的日期因果预测和跨日SOC传递。"
+    f"Q4-2全年费用为{agg['q4']['cost']:.2f}元，紧急购电量为{agg['q4']['emergency_kwh']:.3f} kWh。"
+)
+h("6.2 问题4-3")
+p(
+    "在同一波动价格下，重新执行问题三的四次滚动预报和计划—调整结算。Q4-3从与Q4-2相同的日初SOC独立启动，"
+    "不把Q4-2的日末状态带入Q4-3，从而避免两个实验分支互相污染。"
+    f"Q4-3全年费用为{agg['q4_3']['cost']:.2f}元，紧急购电量为{agg['q4_3']['emergency_kwh']:.3f} kWh。"
+)
+row43 = daily[["q4_3_base_cost", "q4_3_reduction_fee", "q4_3_increase_fee", "q4_3_emergency_cost", "q4_3_cost"]].sum()
+doc.add_paragraph("表8  四个场景的全年本地回测")
+pf.three_line_table(doc, [["场景", "费用/元", "紧急购电/kWh", "日费用中位数/元", "日费用P95/元"]] + [[name, f"{agg[key]['cost']:.2f}", f"{agg[key]['emergency_kwh']:.3f}", f"{daily[cost].median():.2f}", f"{daily[cost].quantile(.95):.2f}"] for name, key, cost in [("Q2", "q2", "q2_cost"), ("Q3", "q3", "q3_cost"), ("Q4-2", "q4", "q4_cost"), ("Q4-3", "q4_3", "q4_3_cost")]])
+doc.add_paragraph("表9  Q4-3全年结算分项")
+pf.three_line_table(doc, [["分项", "全年金额/元", "占Q4-3总费用/%"], ["计划基准费", f"{row43['q4_3_base_cost']:.2f}", f"{100*row43['q4_3_base_cost']/row43['q4_3_cost']:.2f}"], ["调减费", f"{row43['q4_3_reduction_fee']:.2f}", f"{100*row43['q4_3_reduction_fee']/row43['q4_3_cost']:.2f}"], ["调增费", f"{row43['q4_3_increase_fee']:.2f}", f"{100*row43['q4_3_increase_fee']/row43['q4_3_cost']:.2f}"], ["紧急费", f"{row43['q4_3_emergency_cost']:.2f}", f"{100*row43['q4_3_emergency_cost']/row43['q4_3_cost']:.2f}"], ["合计", f"{row43['q4_3_cost']:.2f}", "100.00"]])
+fig("result_q4_cost_box", "图6  Q2、Q3与Q4-2日费用分布")
+fig("result_q4_3_series", "图7  Q4-3逐日费用序列")
+
+H("七、题面指定日期结果")
+p("下表给出题目要求的四个指定日期的日购电结果；逐十分钟完整计划保存在对应结果工作簿，表中紧急时段为连续正缺口的合并区间。")
+for label, filename, groups, cost_col, em_col in [("问题二", "result2.xlsx", em2, "q2_cost", "q2_emergency_kwh"), ("问题三", "result3.xlsx", em3, "q3_cost", "q3_emergency_kwh")]:
+    doc.add_paragraph(f"表{10 if label == '问题二' else 11}  {label}指定日期紧急购电")
+    rows = [["日期", "日费用/元", "紧急购电量/kWh", "紧急购电时段（区间：电量/kWh）"]]
+    for d in specified_dates:
+        rec = daily.loc[daily.date == d].iloc[0]
+        pieces = groups[d]
+        desc = "；".join(f"{tm}：{val:.3f}" for tm, val in pieces) if pieces else "无"
+        rows.append([d, f"{rec[cost_col]:.2f}", f"{rec[em_col]:.3f}", desc])
+    pf.three_line_table(doc, rows)
+    p(f"完整的144点计划、储能状态和所有紧急购电区间见{filename}；本表只压缩展示题面指定日期，避免正文被逐日明细淹没。")
+
+H("八、敏感性、稳健性与局限")
+h("8.1 光伏保守系数敏感性")
+sens = pd.read_csv(OUT / "sensitivity_forecast.csv")
+doc.add_paragraph("表12  Q2光伏保守系数敏感性")
+pf.three_line_table(doc, [["系数", "全年费用/元", "紧急购电/kWh"]] + [[f"{r.pv_factor:.2f}", f"{r.q2_cost:.2f}", f"{r.q2_emergency_kwh:.3f}"] for r in sens.itertuples()])
+p(
+    "在当前附件和日电量—形状负荷预测下，0.9系数给出最低的回测费用；0.8虽然减少了紧急购电量，却增加了计划购电，"
+    "1.0则在预测偏乐观时显著增加紧急购电。这个结论只对当前回测窗口和成本口径成立，不宣称0.9是普适最优。"
+)
+h("8.2 对抗性核验")
+p(
+    "本版本对外部经验贴只吸收可验证的建模启发，不直接采用其中的数字或未来信息路径。"
+    "重点检查包括：计划与调整结算是否分项相加、Q4-2与Q4-3是否从独立分支启动、负荷预测是否只使用目标日前数据、"
+    "MILP与网格DP是否在同一端点条件下比较，以及结果工作簿是否保留题面要求的工作表。"
+)
+h("8.3 局限")
+p(
+    "当前模型把预测表示为单一路径，尚未建立完整场景树或概率预测区间，也未建模通信延迟、电池退化、负荷可移峰和CVaR风险度量。"
+    "因此全年数值只能解释为本地附件回测基线；后续若引入鲁棒或随机模型，应重新估计场景、重算全部结果并重新审计。"
+)
+fig("process_q2_q4_compare", "图8  固定价格与波动价格下的日费用对比")
+
+H("九、结论与可复现性")
+p(
+    "本文以一个统一的十分钟能量平衡模型贯穿四个问题：问题一用互斥MILP得到可执行的单日基准，"
+    "网格DP提供库存价值的独立校验；问题二用日期因果预测完成全年计划和实际缺口结算；问题三把新预报转化为锁定前缀后的滚动再决策，"
+    "并按题面规则拆解计划、调减、调增和紧急费用；问题四通过独立分支评估波动价格的影响。"
+    f"在当前334天本地回测中，Q2至Q4-3费用依次为{agg['q2']['cost']:.2f}、{agg['q3']['cost']:.2f}、{agg['q4']['cost']:.2f}和{agg['q4_3']['cost']:.2f}元。"
+)
+p("复现命令为：../.venv/bin/python solve_c.py --seed 20260911。结果表位于results/result*.xlsx，逐日账单位于results/daily_metrics.csv，预测诊断位于results/forecast_diagnostics.csv，输入哈希和环境记录位于results/复现记录.json。")
+p("正文中的图1、图2、图3、图4、图5、图6、图7、图8以及表1、表2、表3、表4、表5、表6、表7、表8、表9、表10、表11、表12、表13均在相应方法或结果段落中使用；完整逐十分钟结果保留在结果工作簿中。")
+doc.add_paragraph("表13  交付物清单")
+pf.three_line_table(doc, [["交付物", "位置", "用途"], ["求解脚本", "solve_c.py", "重算Q1—Q4"], ["结果工作簿", "results/result*.xlsx", "按题面模板复核和提交准备"], ["论文Word", "完整论文.docx", "可编辑正文和公式"], ["论文LaTeX", "完整论文-LaTeX/main.tex", "Overleaf编译"], ["图形", "figures/*.png,*.svg", "论文插图和编辑"], ["研究记录", "research/", "样本检索、经验贴审查与方法边界"]])
+
+H("AI工具使用声明")
+p("依据当届竞赛规定，Codex用于资料检索、代码组织、公式排版和结果复核；题面解释、模型假设、参数选择、代码运行、结果解释和最终提交由参赛队员审阅并负责。外部经验贴与公开论文只用于方法参考，不作为未经复现的结果来源。AI工具使用详情另见AI工具使用详情.pdf。")
+
+H("参考文献")
+p("[1] 全国大学生数学建模竞赛组委会. 2026年竞赛题目与人工智能使用规定（以当届官方发布版本为准）.")
+p("[2] Gulotta F, Crespo del Granado P, Pisciella P, et al. Short-term uncertainty in the dispatch of energy resources for VPP: A novel rolling horizon model based on stochastic programming. International Journal of Electrical Power & Energy Systems, 2023, 153:109355. DOI:10.1016/j.ijepes.2023.109355.")
+p("[3] Hönen J, Hurink J L, Zwart B. Dynamic Rolling Horizon-Based Robust Energy Management for Microgrids Under Uncertainty. arXiv:2307.05154, 2023.")
+p("[4] Hart W E, Laird C, Watson J P, et al. Pyomo—Optimization Modeling in Python. Springer, 2017.")
+
+out = pf.save_document(doc, ROOT, filename="完整论文.docx", contest="cumcm", overwrite=True)
 print(out)
