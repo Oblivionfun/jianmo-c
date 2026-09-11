@@ -4,9 +4,7 @@ from pathlib import Path
 from datetime import datetime, date, timedelta
 import numpy as np
 import pandas as pd
-import sys as _sys
-_sys.path.insert(0, '/Users/xingyu/.codex/skills/math-modeling/tools/figure/scripts')
-from export_figure import export_figure
+from scripts.export_figure import export_figure
 from scipy.optimize import linprog, milp, LinearConstraint, Bounds
 from openpyxl import load_workbook
 

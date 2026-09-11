@@ -10,7 +10,7 @@
 针对固定与波动电价、负载及光伏预测逐步更新条件下的微网购电和储能调度问题，本文建立十分钟离散能量平衡模型，显式区分常规购电、紧急购电、储能充放电和弃光。问题一采用带充放电互斥的混合整数线性规划；问题二采用历史七日中位数负载预测和光伏保守校准进行全年因果回测；问题三在0、6、12、18时锁定已执行前缀并滚动重优化，按0.5倍和1.5倍价格结算调整差额；问题四替换附件4实时价格并独立重算。结果表明，问题一购电量为59482.699 kWh，SOC在1200--10800 kWh之间且日末回到6000 kWh；问题二、三、4-2、4-3全年费用分别为17197426.76、20314332.61、17442616.32和20547027.24元。\keywords{微网；储能调度；混合整数线性规划；滚动优化；光伏预测；动态电价}
 \end{abstract}
 \section{问题重述与数据审计}
-题目要求在十分钟粒度制定微网与外部电网调控策略。附件1提供单日价格、负载和光伏预测；附件2提供全年实际负载与光伏；附件3提供每日0、6、12、18时的未来24小时光伏预报；附件4提供实时波动电价。评估区间为2025-02-01至2025-12-31，共334天。功率乘以$\Delta t=1/6$ h后转为能量。\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{figs/raw_q1_inputs.png}\caption{问题一输入}\label{fig:q1-input}\end{figure}
+题目要求在十分钟粒度制定微网与外部电网调控策略。附件1提供单日价格、负载和光伏预测；附件2提供全年实际负载与光伏；附件3提供每日0、6、12、18时的未来24小时光伏预报；附件4提供实时波动电价。评估区间为2025-02-01至2025-12-31，共334天。功率乘以$\Delta t=1/6$ h后转为能量。\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{raw_q1_inputs.png}\caption{问题一输入}\label{fig:q1-input}\end{figure}
 \section{模型假设与符号}
 设$q_t,e_t,c_t,d_t,u_t,S_t$分别为常规购电、紧急购电、充电、放电、弃光和储能状态，单位分别为kWh；$L_t,G_t,p_t$为负载、光伏功率和价格。充电增加储能，放电减少储能，效率$\eta=0.9$。主要符号见表~\ref{tab:symbol}。
 \begin{table}[H]\centering\caption{主要符号}\label{tab:symbol}\begin{tabular}{lll}\toprule 符号&含义&单位\\\midrule $q_t,e_t$&常规/紧急购电量&kWh\\$c_t,d_t$&充电量/放电量&kWh\\$S_t$&储能状态&kWh\\$L_t,G_t$&负载/光伏功率&kW\\$p_t$&交易价格&元/kWh\\\bottomrule\end{tabular}\end{table}
@@ -21,24 +21,29 @@
 问题一加入$S_T=S_0$以及二元变量$z_t$，满足$c_t\le P_{\max}z_t,d_t\le P_{\max}(1-z_t)$。问题二至问题四沿用同一物理约束并进行跨日状态传递。
 \section{问题一：单日确定性调度}
 目标函数为$\min\sum_t p_tq_t$。MILP求解得到购电量59482.699 kWh、费用35126.986元，SOC边界和端点约束均满足。图~\ref{fig:q1-soc}和图~\ref{fig:q1-dispatch}展示状态和购电调度。
-\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{figs/process_q1_soc.png}\caption{问题一SOC轨迹}\label{fig:q1-soc}\end{figure}
-\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{figs/result_q1_dispatch.png}\caption{问题一价格与购电}\label{fig:q1-dispatch}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{process_q1_soc.png}\caption{问题一SOC轨迹}\label{fig:q1-soc}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{result_q1_dispatch.png}\caption{问题一价格与购电}\label{fig:q1-dispatch}\end{figure}
 \section{问题二：全年因果回测}
 每天0:00仅使用最近七个可用历史日的逐时中位数预测负载，并将光伏中位数乘以0.9。计划由预测序列求解，实际缺口按五倍价格结算。全年费用17197426.76元，紧急购电463147.305 kWh。
-\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{figs/raw_q2_q3_q4_emergency.png}\caption{全年紧急购电}\label{fig:q2-emergency}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{raw_q2_q3_q4_emergency.png}\caption{全年紧急购电}\label{fig:q2-emergency}\end{figure}
 \section{问题三：多时刻预报与滚动调整}
 设$q_t^0$为0时计划，$q_t^a$为调整计划，结算项为
 \begin{equation}\label{eq:adjust}\sum_t p_tq_t^0+0.5p_t(q_t^0-q_t^a)^++1.5p_t(q_t^a-q_t^0)^++5p_te_t.
 \end{equation}
-在0、6、12、18时分别发布预报，每次锁定已执行前缀，只优化剩余时段。全年含调整费用20314332.61元，紧急购电758262.155 kWh。\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{figs/process_q3_adjustment.png}\caption{计划与调整差额}\label{fig:q3-adjust}\end{figure}
+在0、6、12、18时分别发布预报，每次锁定已执行前缀，只优化剩余时段。全年含调整费用20314332.61元，紧急购电758262.155 kWh。\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{process_q3_adjustment.png}\caption{计划与调整差额}\label{fig:q3-adjust}\end{figure}
 \section{问题四：波动电价}
-问题4-2将价格替换为附件4实时序列，全年费用17442616.32元；问题4-3在动态价格下独立执行四次滚动调整，全年费用20547027.24元。\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{figs/result_q4_cost_box.png}\caption{场景费用分布}\label{fig:q4-box}\end{figure}\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{figs/result_q4_3_series.png}\caption{问题4-3日费用序列}\label{fig:q4-series}\end{figure}
+问题4-2将价格替换为附件4实时序列，全年费用17442616.32元；问题4-3在动态价格下独立执行四次滚动调整，全年费用20547027.24元。\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{result_q4_cost_box.png}\caption{场景费用分布}\label{fig:q4-box}\end{figure}\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{result_q4_3_series.png}\caption{问题4-3日费用序列}\label{fig:q4-series}\end{figure}
 \begin{table}[H]\centering\caption{全年结果}\label{tab:results}\begin{tabular}{lrr}\toprule 场景&费用/元&紧急购电/kWh\\\midrule 问题二&17197426.76&463147.305\\问题三&20314332.61&758262.155\\问题4-2&17442616.32&463147.305\\问题4-3&20547027.24&758389.163\\\bottomrule\end{tabular}\end{table}
 \section{稳健性与局限}
 模型通过功率平衡、SOC上下界、端点状态、非负购电和模板结构检查。预测校准是可复现基准策略，不等同于统计最优预测；问题三和问题4-3是确定性四次滚动近似，尚未引入预测分布、场景树、通信延迟或风险度量。后续可按季节、天气型和工作日分层，加入安全库存和CVaR。
 \section{结论与可复现性}
-统一模型覆盖四个问题并保持物理和结算口径一致。代码、输入快照、结果表、逐日指标和图形均随项目交付，命令为\texttt{../.venv/bin/python solve_c.py --seed 20260911}。\cite{gulotta2023,rolling2023,pyomo,ortools}
+统一模型覆盖四个问题并保持物理和结算口径一致。代码、输入快照、结果表、逐日指标和图形均随项目交付，命令为\texttt{../.venv/bin/python solve\_c.py --seed 20260911}。
 \section*{AI使用声明}
 依据2026年竞赛规定，本项目使用Codex辅助资料检索、代码组织、公式排版和结果复核；模型假设、参数选择、代码运行、结果解释和最终提交由参赛队员负责。
-\bibliographystyle{plain}\bibliography{references}
+\begin{thebibliography}{9}
+\bibitem{gulotta2023} Gulotta et al. Microgrid energy management under uncertainty, 2023.
+\bibitem{rolling2023} Rolling-horizon optimization for energy storage, 2023.
+\bibitem{pyomo} Hart et al. Pyomo--optimization modeling in Python.
+\bibitem{ortools} Google OR-Tools documentation.
+\end{thebibliography}
 \end{document}
