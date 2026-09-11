@@ -13,7 +13,7 @@ from pathlib import Path
 import openpyxl
 import pandas as pd
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Inches, Pt
+from docx.shared import Inches
 
 sys.path.insert(0, "/Users/xingyu/.codex/skills/math-modeling/tools/docx/scripts")
 import paper_format as pf
@@ -95,10 +95,10 @@ def p(text):
     pf.body(doc, text)
 
 
-def fig(stem, caption):
+def fig(stem, caption, width=5.8):
     para = doc.add_paragraph()
     para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    para.add_run().add_picture(str(ROOT / "figures" / f"{stem}.png"), width=Inches(5.8))
+    para.add_run().add_picture(str(ROOT / "figures" / f"{stem}.png"), width=Inches(width))
     cap = doc.add_paragraph(caption)
     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
@@ -129,8 +129,37 @@ pf.three_line_table(
         ["附件4.xlsx", "全年十分钟波动价格", "Q4-2、Q4-3价格"],
     ],
 )
-fig("raw_q1_inputs", "图1  问题一输入序列（负荷、光伏预测与十分钟时间轴）")
-p("数据审计、输入哈希和字段检查由scripts/validate_input_xml.py执行；原始附件不被改写，结果文件由当前代码写入results目录。竞赛规则和论文格式以官方规范[1]为准。")
+h("1.3 信息集与预处理流程")
+p(
+    "四个子问题共享能量平衡和储能状态方程，但决策时可见的信息不同。问题一把附件1中的单日负荷、光伏预测和价格视为已知；"
+    "问题二在每天0:00只使用目标日前的历史样本生成计划，实际负荷与实际光伏留到事后结算；问题三在0、6、12、18时接收新光伏预报，"
+    "只重算尚未执行的区间；问题四只替换价格序列，分别沿用问题二、问题三的信息边界。这样处理可以把预测误差、信息更新时间和价格变化的影响分开。"
+)
+p(
+    "数据读取先把Excel日期序列转换为真实日期，并检查全年日期连续、每天144个十分钟记录。附件3同一天的四条预报记录可能只有首行带日期，"
+    "读取时沿用该日期；24个整点预测按小时中心线性插值到十分钟中心，端点使用最近值。输入审计显示，附件1有144条记录和432个数值字段，"
+    "附件2和附件4均为365×144个功率或价格记录，附件3为365×4×24个预测值；检查未发现缺失或非数值单元格。"
+)
+p(
+    "全年回测按结果模板取2025-02-01至2025-12-31的334天。所有功率在进入能量平衡前乘以Δt，所有费用由同一时段的价格乘购电量计算；"
+    "原始附件不被改写，字段、范围和输入哈希由scripts/validate_input_xml.py记录，结果文件由当前代码写入results目录。"
+)
+fig("raw_q1_inputs", "图1  问题一输入序列（负荷、光伏预测与十分钟时间轴）", width=4.8)
+p("图1只用于核对问题一输入的时间轴、负荷与光伏预测的相对变化，不把曲线形状直接当作全年实际运行结论。竞赛规则和论文格式以官方规范[1]为准。")
+h("1.4 数据审计结论")
+p(
+    "审计结果表明，附件的主要风险不在缺失值，而在时间索引、功率与电量的换算以及预测信息的可得性。"
+    "因此程序先按真实日期和十分钟序号建立索引，再执行功率乘Δt；结果模板中的‘0:00-0:10+1’只作为导出标签，"
+    "不参与内部状态递推。附件3日期空白行只做同日标签的前向填充，不对预测数值作插值外的人工修正。"
+)
+p(
+    "上述检查不能证明预测本身准确，只能证明输入结构完整、单位转换有迹可循。预测误差由问题二和问题三的因果回测衡量，"
+    "实际负荷与实际光伏只在结算阶段进入误差和费用计算；若把实际值提前送入日内优化，会得到不可复现的完美信息结果。"
+)
+p(
+    "由此，后文统一采用‘预测用于决策、实际值用于回放’的双轨记录：每个策略同时保存输入信息集、求解计划、实际能量平衡、"
+    "紧急购电和费用分项。这样既能比较储能策略，也能把预测改进、预报更新时间和价格替换带来的收益分开归因。"
+)
 
 H("二、模型假设、符号与统一约束")
 h("2.1 建模假设")
@@ -333,7 +362,7 @@ H("AI工具使用声明")
 p("依据当届竞赛规定，Codex用于资料检索、代码组织、公式排版和结果复核；题面解释、模型假设、参数选择、代码运行、结果解释和最终提交由参赛队员审阅并负责。外部经验贴与公开论文只用于方法参考，不作为未经复现的结果来源。AI工具使用详情另见AI工具使用详情.pdf。")
 
 H("参考文献")
-p("[1] 全国大学生数学建模竞赛组委会. 2026年竞赛题目与人工智能使用规定（以当届官方发布版本为准）.")
+p("[1] 全国大学生数学建模竞赛组委会. 全国大学生数学建模竞赛论文格式规范（2023年修订稿）. 中国大学生在线, 2023. https://dxs.moe.gov.cn/zx/a/hd_sxjm_gsyw/231205/1869343.shtml.")
 p("[2] Gulotta F, Crespo del Granado P, Pisciella P, et al. Short-term uncertainty in the dispatch of energy resources for VPP: A novel rolling horizon model based on stochastic programming. International Journal of Electrical Power & Energy Systems, 2023, 153:109355. DOI:10.1016/j.ijepes.2023.109355.")
 p("[3] Hönen J, Hurink J L, Zwart B. Dynamic Rolling Horizon-Based Robust Energy Management for Microgrids Under Uncertainty. arXiv:2307.05154, 2023.")
 p("[4] Hart W E, Laird C, Watson J P, et al. Pyomo—Optimization Modeling in Python. Springer, 2017.")
