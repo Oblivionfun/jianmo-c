@@ -434,17 +434,26 @@ fig("result_q4_3_series", "图7  Q4-3逐日费用序列", width=4.8)
 p("图7展示Q4-3逐日账单的季节性和尖峰。曲线中的高点同时受到负荷、光伏误差、储能状态和动态价格影响，不能仅凭单日峰值判断某一因素的贡献；因此本文把价格替换、滚动更新和实际缺口分别记录。")
 
 H("七、题面指定日期结果")
-p("下表给出题目要求的四个指定日期的日购电结果；逐十分钟完整计划保存在对应结果工作簿，表中紧急时段为连续正缺口的合并区间。")
+p("下表按题面指定日期展示Q2和Q3的日费用、紧急购电总量、紧急区间数和区间摘要。紧急区间把连续为正的十分钟缺口合并，区间电量为其中各点e_t之和；日费用仍按对应问题的完整144点账单计算。逐十分钟计划、储能状态和全部区间保存在结果工作簿，表格只承担指定日期的可读核对。")
 for label, filename, groups, cost_col, em_col in [("问题二", "result2.xlsx", em2, "q2_cost", "q2_emergency_kwh"), ("问题三", "result3.xlsx", em3, "q3_cost", "q3_emergency_kwh")]:
+    if label == "问题三":
+        doc.add_page_break()
     doc.add_paragraph(f"表{10 if label == '问题二' else 11}  {label}指定日期紧急购电")
     rows = [["日期", "日费用/元", "紧急购电量/kWh", "紧急购电时段（区间：电量/kWh）"]]
     for d in specified_dates:
         rec = daily.loc[daily.date == d].iloc[0]
         pieces = groups[d]
-        desc = "；".join(f"{tm}：{val:.3f}" for tm, val in pieces) if pieces else "无"
+        parts = [f"{tm}：{val:.3f}" for tm, val in pieces]
+        desc = "\n".join("；".join(parts[i:i + 4]) for i in range(0, len(parts), 4)) if parts else "无"
         rows.append([d, f"{rec[cost_col]:.2f}", f"{rec[em_col]:.3f}", desc])
-    pf.three_line_table(doc, rows)
+    compact_table(rows, font_size=8.5)
     p(f"完整的144点计划、储能状态和所有紧急购电区间见{filename}；本表只压缩展示题面指定日期，避免正文被逐日明细淹没。")
+date_idx = daily.set_index("date")
+p(
+    f"两张表的交叉核对显示，Q3在四个指定日期的日费用均高于Q2，差额分别为{date_idx.loc['2025-03-20','q3_cost']-date_idx.loc['2025-03-20','q2_cost']:.2f}、{date_idx.loc['2025-06-21','q3_cost']-date_idx.loc['2025-06-21','q2_cost']:.2f}、{date_idx.loc['2025-09-23','q3_cost']-date_idx.loc['2025-09-23','q2_cost']:.2f}和{date_idx.loc['2025-12-21','q3_cost']-date_idx.loc['2025-12-21','q2_cost']:.2f}元。"
+    f"9月23日Q2没有紧急购电而Q3出现{date_idx.loc['2025-09-23','q3_emergency_kwh']:.3f} kWh，6月21日Q3区间数虽由{len(em2['2025-06-21'])}个变为{len(em3['2025-06-21'])}个，紧急总量却增加到{date_idx.loc['2025-06-21','q3_emergency_kwh']:.3f} kWh。"
+    "这说明区间数量、缺口总量和日费用分别反映持续性、规模与价格暴露，不能用其中一个指标替代另外两个。"
+)
 
 H("八、敏感性、稳健性与局限")
 h("8.1 光伏保守系数敏感性")

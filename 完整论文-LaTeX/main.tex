@@ -197,11 +197,23 @@ Q4-3&19577410.54&1067444.696&62181.98&99890.07\\\bottomrule\end{tabular}\end{tab
 图~\ref{fig:q43}展示Q4-3逐日账单的季节性和尖峰。曲线中的高点同时受到负荷、光伏误差、储能状态和动态价格影响，不能仅凭单日峰值判断某一因素的贡献；因此本文把价格替换、滚动更新和实际缺口分别记录。
 
 \section{题面指定日期结果}
-下表给出题目要求的四个指定日期的日购电结果；逐十分钟完整计划保存在对应结果工作簿，表中紧急时段为连续正缺口的合并区间。完整的逐时紧急区间见\path{results/result2.xlsx}和\path{results/result3.xlsx}。
-\begin{table}[H]\centering\caption{问题二指定日期结果}\label{tab:q2dates}\begin{tabular}{lrrr}\toprule 日期&日费用/元&紧急购电/kWh&紧急区间数\\\midrule
-2025-03-20&47713.84&514.768&11\\2025-06-21&30766.61&4195.055&5\\2025-09-23&53645.52&0.000&0\\2025-12-21&74389.60&4881.033&17\\\bottomrule\end{tabular}\end{table}
-\begin{table}[H]\centering\caption{问题三指定日期结果}\label{tab:q3dates}\begin{tabular}{lrrr}\toprule 日期&日费用/元&紧急购电/kWh&紧急区间数\\\midrule
-2025-03-20&54769.63&1216.724&13\\2025-06-21&34383.54&5030.908&4\\2025-09-23&62003.33&1035.583&2\\2025-12-21&85179.87&6947.475&11\\\bottomrule\end{tabular}\end{table}
+下表按题面指定日期展示Q2和Q3的日费用、紧急购电总量和紧急区间数。紧急区间把连续为正的十分钟缺口合并，区间电量为其中各点$e_t$之和；日费用仍按对应问题的完整144点账单计算。逐十分钟计划、储能状态和全部区间保存在结果工作簿，表格只承担指定日期的可读核对。
+\begin{equation}
+I_j=\{a_j,\ldots,b_j\},\qquad e_t>0\;(t\in I_j),\qquad E_j=\sum_{t=a_j}^{b_j}e_t .
+\end{equation}
+\begin{table}[H]\centering\small\caption{问题二指定日期结果}\label{tab:q2dates}\begin{tabular}{lrrr}\toprule 日期&日费用/元&紧急购电/kWh&紧急区间数\\\midrule
+2025-03-20&47713.84&514.768&11\\
+2025-06-21&30766.61&4195.055&5\\
+2025-09-23&53645.52&0.000&0\\
+2025-12-21&74389.60&4881.033&17\\\bottomrule\end{tabular}\end{table}
+\newpage
+\begin{table}[H]\centering\small\caption{问题三指定日期结果}\label{tab:q3dates}\begin{tabular}{lrrr}\toprule 日期&日费用/元&紧急购电/kWh&紧急区间数\\\midrule
+2025-03-20&54769.63&1216.724&13\\
+2025-06-21&34383.54&5030.908&4\\
+2025-09-23&62003.33&1035.583&2\\
+2025-12-21&85179.87&6947.475&11\\\bottomrule\end{tabular}\end{table}
+两张表的交叉核对显示，Q3在四个指定日期的日费用均高于Q2，差额分别为7055.79、3616.93、8357.81和10790.27元。9月23日Q2没有紧急购电而Q3出现1035.583\,kWh；6月21日Q3区间数虽由5个变为4个，紧急总量却增加到5030.908\,kWh。这说明区间数量、缺口总量和日费用分别反映持续性、规模与价格暴露，不能用其中一个指标替代另外两个。
+完整的144点计划、储能状态和所有紧急购电区间见\path{results/result2.xlsx}和\path{results/result3.xlsx}；表中数值均由当前结果文件读取，未对指定日期做事后调参。
 
 \section{敏感性、稳健性与局限}
 \begin{table}[H]\centering\caption{Q2光伏保守系数敏感性}\label{tab:sens}\begin{tabular}{lrr}\toprule 系数&全年费用/元&紧急购电/kWh\\\midrule
