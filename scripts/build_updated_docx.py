@@ -61,6 +61,18 @@ specified_dates = ["2025-03-20", "2025-06-21", "2025-09-23", "2025-12-21"]
 em2 = read_emergency_groups("result2.xlsx", specified_dates)
 em3 = read_emergency_groups("result3.xlsx", specified_dates)
 
+
+def read_price_stats():
+    """Read the two price supports used by Q2/Q4 from the audited inputs."""
+    ws1 = openpyxl.load_workbook(ROOT / "input" / "附件" / "附件1.xlsx", data_only=True, read_only=True).active
+    fixed = [float(row[1]) for row in ws1.iter_rows(min_row=2, max_row=145, values_only=True)]
+    ws4 = openpyxl.load_workbook(ROOT / "input" / "附件" / "附件4.xlsx", data_only=True, read_only=True).active
+    dynamic = [float(value) for row in ws4.iter_rows(min_row=2, values_only=True) for value in row[1:145] if value is not None]
+    return pd.Series(fixed), pd.Series(dynamic)
+
+
+fixed_price, dynamic_price = read_price_stats()
+
 doc = pf.new_document(contest="cumcm")
 pf.title(doc, "微网与外部电网电力调控策略研究")
 pf.abstract_title(doc)
@@ -391,21 +403,35 @@ H("六、问题四：波动价格下的独立分支")
 h("6.1 问题4-2")
 p(
     "将附件4的144点价格替换问题二中的固定价格序列，保留相同的日期因果预测和跨日SOC传递。"
+    f"附件1固定价格范围为{fixed_price.min():.4f}—{fixed_price.max():.4f}元/kWh，附件4波动价格范围为{dynamic_price.min():.4f}—{dynamic_price.max():.4f}元/kWh，两者全体均值均约为{fixed_price.mean():.4f}元/kWh；价格波动主要改变时段间的相对顺序和尖峰，而非改变平均价格水平。"
+    "因此Q4-2用于隔离价格时序影响，负荷、光伏预测和储能跨日传递均沿用Q2。"
+)
+p(
     f"Q4-2全年费用为{agg['q4']['cost']:.2f}元，紧急购电量为{agg['q4']['emergency_kwh']:.3f} kWh。"
+    f"其紧急购电量与Q2相同，但费用比Q2增加{agg['q4']['cost']-agg['q2']['cost']:.2f}元（{100*(agg['q4']['cost']/agg['q2']['cost']-1):.2f}%），紧急费为{daily['q4_emergency_cost'].sum():.2f}元，占Q4-2总费用的{100*daily['q4_emergency_cost'].sum()/agg['q4']['cost']:.2f}%；这表明动态价格通过结算时点和储能时序进入账单。"
 )
 h("6.2 问题4-3")
 p(
     "在同一波动价格下，重新执行问题三的四次滚动预报和计划—调整结算。Q4-3从与Q4-2相同的日初SOC独立启动，"
     "不把Q4-2的日末状态带入Q4-3，从而避免两个实验分支互相污染。"
+    "Q4-3只把附件4价格代入滚动求解和非对称结算，预测更新时刻、锁定前缀规则和实际缺口计算保持不变。"
     f"Q4-3全年费用为{agg['q4_3']['cost']:.2f}元，紧急购电量为{agg['q4_3']['emergency_kwh']:.3f} kWh。"
 )
 row43 = daily[["q4_3_base_cost", "q4_3_reduction_fee", "q4_3_increase_fee", "q4_3_emergency_cost", "q4_3_cost"]].sum()
 doc.add_paragraph("表8  四个场景的全年本地回测")
 pf.three_line_table(doc, [["场景", "费用/元", "紧急购电/kWh", "日费用中位数/元", "日费用P95/元"]] + [[name, f"{agg[key]['cost']:.2f}", f"{agg[key]['emergency_kwh']:.3f}", f"{daily[cost].median():.2f}", f"{daily[cost].quantile(.95):.2f}"] for name, key, cost in [("Q2", "q2", "q2_cost"), ("Q3", "q3", "q3_cost"), ("Q4-2", "q4", "q4_cost"), ("Q4-3", "q4_3", "q4_3_cost")]])
+p(
+    f"表8显示，动态价格下Q4-2的日费用中位数为{daily['q4_cost'].median():.2f}元、P95为{daily['q4_cost'].quantile(.95):.2f}元；Q4-3相对Q3费用增加{agg['q4_3']['cost']-agg['q3']['cost']:.2f}元（{100*(agg['q4_3']['cost']/agg['q3']['cost']-1):.2f}%），而紧急购电量仅增加{agg['q4_3']['emergency_kwh']-agg['q3']['emergency_kwh']:.3f} kWh。价格尖峰和调整费共同抬高了账单，数量指标与费用指标由此产生分离。"
+)
 doc.add_paragraph("表9  Q4-3全年结算分项")
 pf.three_line_table(doc, [["分项", "全年金额/元", "占Q4-3总费用/%"], ["计划基准费", f"{row43['q4_3_base_cost']:.2f}", f"{100*row43['q4_3_base_cost']/row43['q4_3_cost']:.2f}"], ["调减费", f"{row43['q4_3_reduction_fee']:.2f}", f"{100*row43['q4_3_reduction_fee']/row43['q4_3_cost']:.2f}"], ["调增费", f"{row43['q4_3_increase_fee']:.2f}", f"{100*row43['q4_3_increase_fee']/row43['q4_3_cost']:.2f}"], ["紧急费", f"{row43['q4_3_emergency_cost']:.2f}", f"{100*row43['q4_3_emergency_cost']/row43['q4_3_cost']:.2f}"], ["合计", f"{row43['q4_3_cost']:.2f}", "100.00"]])
-fig("result_q4_cost_box", "图6  Q2、Q3与Q4-2日费用分布")
-fig("result_q4_3_series", "图7  Q4-3逐日费用序列")
+p(
+    f"表9中基准费占Q4-3总费用的{100*row43['q4_3_base_cost']/row43['q4_3_cost']:.2f}%，调减和调增费用合计占{100*(row43['q4_3_reduction_fee']+row43['q4_3_increase_fee'])/row43['q4_3_cost']:.2f}%，紧急费占{100*row43['q4_3_emergency_cost']/row43['q4_3_cost']:.2f}%。与Q3相比，Q4-3的调整费占比明显提高，说明动态价格放大了计划偏差的结算代价。"
+)
+fig("result_q4_cost_box", "图6  Q2、Q3与Q4-2日费用分布", width=4.8)
+p("图6比较日费用的中位数、四分位区间和极端值；Q4-2的箱体与上须更高，反映波动价格增加了日费用尾部风险。箱线图用于分布对照，全年总费用仍以表8的逐日求和为准。")
+fig("result_q4_3_series", "图7  Q4-3逐日费用序列", width=4.8)
+p("图7展示Q4-3逐日账单的季节性和尖峰。曲线中的高点同时受到负荷、光伏误差、储能状态和动态价格影响，不能仅凭单日峰值判断某一因素的贡献；因此本文把价格替换、滚动更新和实际缺口分别记录。")
 
 H("七、题面指定日期结果")
 p("下表给出题目要求的四个指定日期的日购电结果；逐十分钟完整计划保存在对应结果工作簿，表中紧急时段为连续正缺口的合并区间。")
