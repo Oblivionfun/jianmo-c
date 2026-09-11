@@ -13,7 +13,7 @@ from pathlib import Path
 import openpyxl
 import pandas as pd
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Inches
+from docx.shared import Inches, Pt
 
 sys.path.insert(0, "/Users/xingyu/.codex/skills/math-modeling/tools/docx/scripts")
 import paper_format as pf
@@ -101,6 +101,20 @@ def fig(stem, caption, width=5.8):
     para.add_run().add_picture(str(ROOT / "figures" / f"{stem}.png"), width=Inches(width))
     cap = doc.add_paragraph(caption)
     cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+
+def compact_table(rows, font_size=10):
+    """Keep small result tables together without shrinking the whole paper."""
+    table = pf.three_line_table(doc, rows)
+    for row in table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.paragraph_format.space_before = Pt(0)
+                paragraph.paragraph_format.space_after = Pt(0)
+                paragraph.paragraph_format.line_spacing = 1.0
+                for run in paragraph.runs:
+                    run.font.size = Pt(font_size)
+    return table
 
 
 H("一、问题重述与数据审计")
@@ -237,17 +251,23 @@ p(
 )
 pf.equation(doc, r"\min\sum_{t=0}^{143}p_tq_t")
 p(
+    "这个目标只为常规购电付费，因为问题一不设置紧急购电，也没有上网收益；日末SOC等于日初SOC则防止模型通过耗尽储能换取一次性低费用。"
+    "在每个时段，储能只有在当前购电成本与未来购电成本比较后才值得充放电，因而q_t的零值本身也是储能机会成本作用的结果。"
+)
+p(
     "并以二元变量z_t施加c_t≤5000Δt z_t、d_t≤5000Δt(1−z_t)，从而消除同一时段同时充放电。"
-    "求解器采用SciPy HiGHS的MILP接口，结果再通过统一审计函数复核；滚动优化与不确定性建模的写法参考文献[2-4]。"
+    "大M直接取单步功率上限，既保留可行动作又不人为放大变量范围。求解器采用SciPy HiGHS的MILP接口，"
+    "结果再通过能量平衡、SOC边界和端点条件复核；滚动优化与不确定性建模的写法参考文献[2-4]。"
 )
 h("3.2 库存价值动态规划交叉核验")
 p(
-    "为独立检查储能跨期机会成本，在5 kWh状态网格上递推库存价值函数。令N_t=(L_t−G_t)Δt，则"
+    "为独立检查储能跨期机会成本，在1200—10800 kWh范围内按5 kWh离散状态，共得到1921个候选状态。"
+    "令N_t=(L_t−G_t)Δt表示不考虑储能时该时段的净购电需求，则"
 )
 pf.equation(doc, r"F_t(S)=\min_{S\to S'}\{p_t\,[N_t+c_t-d_t]^++F_{t+1}(S')\},\quad F_T(6000)=0")
 p(
     f"MILP费用为{q1['objective']:.3f}元，有限网格DP初值为{q1['dp_grid_value']:.3f}元，相对差异{q1['dp_relative_gap_pct']:.4f}%。"
-    "差异来自5 kWh状态离散，提交轨迹采用MILP；DP只承担独立的数值交叉检查。"
+    "递推从日末边界向前计算每个SOC的最低未来购电费，差异来自5 kWh状态离散和连续MILP之间的取整；提交轨迹采用MILP，DP只承担独立的数值交叉检查。"
 )
 doc.add_paragraph("表3  问题一主要结果")
 pf.three_line_table(
@@ -260,14 +280,16 @@ pf.three_line_table(
         ["日末SOC/kWh", f"{q1['terminal_soc']:.0f}", "6000（边界条件）"],
     ],
 )
-fig("result_q1_dispatch", "图3  问题一价格与常规购电量")
 doc.add_paragraph("表4  问题一指定十分钟时段购电量")
-pf.three_line_table(
-    doc,
+compact_table(
     [["时间段", "购电量/kWh"]] + [[k, f"{q1_purchase[k]:.3f}"] for k in ["10:00-10:10", "12:00-12:10", "14:00-14:10", "16:00-16:10", "18:00-18:10", "20:00-20:10"]] + [["全天", f"{q1['purchase_kwh']:.3f}"]],
 )
+doc.add_page_break()
 doc.add_paragraph("表5  问题一指定四小时储能充放电量")
-pf.three_line_table(doc, [["时间段", "充电量/kWh", "放电量/kWh"]] + [[a, f"{b:.3f}", f"{c:.3f}"] for a, b, c in q1_storage] + [["0:00 / 24:00储电量", f"{q1['terminal_soc']:.0f}", f"{q1['terminal_soc']:.0f}"]])
+compact_table([["时间段", "充电量/kWh", "放电量/kWh"]] + [[a, f"{b:.3f}", f"{c:.3f}"] for a, b, c in q1_storage] + [["0:00 / 24:00储电量", f"{q1['terminal_soc']:.0f}", f"{q1['terminal_soc']:.0f}"]])
+p("表4给出题面要求的十分钟购电量，表5把连续轨迹压缩成六个四小时区间，便于检查充放电高峰是否与价格低谷和SOC边界一致。")
+fig("result_q1_dispatch", "图3  问题一价格与常规购电量", width=4.8)
+p("图3中橙线为常规购电量、蓝线为价格；橙线在低价时段并不必然为零，因为储能还受到容量、功率和日末SOC约束。")
 
 H("四、问题二：全年因果预测与日计划")
 h("4.1 负荷与光伏预测")
