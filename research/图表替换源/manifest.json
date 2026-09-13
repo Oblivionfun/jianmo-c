@@ -1,0 +1,58 @@
+{
+  "1.png": {
+    "sha256": "674d581bb0819767e691d5e5ea6909678e50c5c3c5d334ea95515699891e1125",
+    "bytes": 1103368
+  },
+  "10.jpg": {
+    "sha256": "1fb5bf648ca9114ed901c2c41fb8f92c7b11c6d328fc61a41e12abde281f07a8",
+    "bytes": 207350
+  },
+  "11.jpg": {
+    "sha256": "4f416760eb9376dd7998efb770960c2d22ef04d1ef046345f742dbde65c15c92",
+    "bytes": 135338
+  },
+  "12.jpg": {
+    "sha256": "a328c361c4a508775d04930c30d55a86c77e1b2e7bda2b639c5c6085f65f689d",
+    "bytes": 309329
+  },
+  "13.jpg": {
+    "sha256": "2838617e5abc805cdfb1576f863c2fd563fe0a3b06989f005fed6df981a93ace",
+    "bytes": 311316
+  },
+  "14.jpg": {
+    "sha256": "fb1100279d344616d214eb0a00f567fd6a1073a6d28efb05cb54f41e469bbba9",
+    "bytes": 155088
+  },
+  "2.jpg": {
+    "sha256": "a83ef072edd7cba186cd563063ca1c1667cd3e4381f480d3dfb7082cc98c51e3",
+    "bytes": 207659
+  },
+  "3.jpg": {
+    "sha256": "9f12e163f94a38267bdd5d5e18638499c05d6f0476a787397b342b8ced1eb872",
+    "bytes": 303649
+  },
+  "4.jpg": {
+    "sha256": "a5ddc9ba58c56abd9efa7bff2ee08ae112e45650639a917304e411c56a55b717",
+    "bytes": 269359
+  },
+  "5.jpg": {
+    "sha256": "952027e9e27abb89d2ee6ab6a0648f66bc39ea0b05a224edcd62a9162d26c103",
+    "bytes": 275506
+  },
+  "8.jpg": {
+    "sha256": "4e70eaae5900a820b862decb28dd8b6bbf6cec9328b1290f767f0eee9396d762",
+    "bytes": 216629
+  },
+  "9.jpg": {
+    "sha256": "d0d35f7c33cb8db5589b4fc8190c5bdbad005dd1806e396512b48368997ec17e",
+    "bytes": 268392
+  },
+  "forecast_overview_candidate.png": {
+    "sha256": "936a3468f99ee55e2b501f3fb45aeceee3963ee6451359b1054080ac8291bfcb",
+    "bytes": 1109324
+  },
+  "model_framework_candidate.png": {
+    "sha256": "4b5e2e1e6aaad45aa10cbeb91d5b49868f7575be893e245c62fd59971b5fad1c",
+    "bytes": 1082510
+  }
+}

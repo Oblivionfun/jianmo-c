@@ -1,0 +1,20 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>C题论文AI痕迹与语言审校报告</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;max-width:1100px;margin:36px auto;padding:0 24px;color:#202124;line-height:1.65}h1{font-size:28px}h2{margin-top:30px;border-bottom:1px solid #ddd;padding-bottom:6px}table{border-collapse:collapse;width:100%;margin:12px 0 24px}th,td{border:1px solid #d9d9d9;padding:8px;vertical-align:top}th{background:#f5f6f7;text-align:left}.green{color:#137333;font-weight:600}.yellow{color:#9a6700;font-weight:600}.note{background:#fff8e1;border-left:4px solid #e0a800;padding:10px 14px}.small{color:#5f6368;font-size:13px}code{background:#f1f3f4;padding:1px 4px;border-radius:3px}</style></head><body>
+<h1>C题论文 AI 痕迹与语言审校报告</h1>
+<p class="small">对象：<code>完整论文-LaTeX/main.tex</code> 正文（附录前）｜生成时间：2026-09-13 19:10｜版本：Overleaf v58</p>
+<div class="note"><b>解释边界：</b>本报告是写作审校和证据一致性筛查，不是作者身份鉴定，也不提供“AI率”。自动计数只用于发现重复表达；数学模型、结果和正式提交资格仍需由参赛队员逐项确认。</div>
+<h2>第一层：9维语言与事实筛查</h2>
+<table><thead><tr><th>维度</th><th>当前观察</th><th>状态</th><th>证据与边界</th></tr></thead><tbody>
+<tr><td>1 高频连接词</td><td>6/314 句，约 1.91%；“本文/进一步/综上”等为0</td><td class="green">绿</td><td>body 文本自动计数；“因此”1次、“具有”1次，均位于技术说明语境。</td></tr><tr><td>2 排比与同构</td><td>未发现连续三项以上的空泛排比</td><td class="green">绿</td><td>逐章人工复核；并保留带数字、变量或来源的并列结构。</td></tr><tr><td>3 拔高词与修饰</td><td>“显然/显著/普适最优/充分说明”等均为0</td><td class="green">绿</td><td>自动词表计数+人工复核；“具有”仅1次且后接具体物理含义。</td></tr><tr><td>4 被动句与语态</td><td>未发现连续四句被动结构</td><td class="green">绿</td><td>中文语法人工复核；此项不是自动句法判别。</td></tr><tr><td>5 段落结构规律</td><td>11 个一级章节，段首句式有变化</td><td class="green">绿</td><td>逐章阅读；章节级“方法—结果—检验”属于数模文体常规，不作为AI痕迹。</td></tr><tr><td>6 文本复杂度</td><td>正文约36,792字符、314句；二字片段多样性粗指标=0.463</td><td class="">说明</td><td>中文未分词；该值只描述词汇重复程度，不用于作者身份判定。</td></tr><tr><td>7 引文验证</td><td>8 条参考文献，正文引用键 bertsimas, cumcm, gulotta,honen, hyndman, powell, rockafellar, romano</td><td class="yellow">黄</td><td>格式与正文键已核对；文献存在性、主张—文献逐篇核验仍需人工打开原文。</td></tr><tr><td>8 数值一致性</td><td>结构与部分账单恒等式校验通过</td><td class="green">绿</td><td>validate_results.py、validate_workbook_semantics.py、pytest 均通过；覆盖结构、日末边界和已实现的部分账单恒等式，不等于所有144槽物理与模板语义均已证明。</td></tr><tr><td>9 术语一致性</td><td>核心术语已统一：十分钟槽、SOC、计划/回放、紧急购电、滚动基线</td><td class="green">绿</td><td>与正文术语表和逐章记录一致。</td></tr>
+</tbody></table>
+<h2>逐章人工审校摘要</h2>
+<table><thead><tr><th>章节</th><th>本轮处理</th></tr></thead><tbody><tr><td>摘要</td><td>短句化；保留方法、数字和研究基线边界。</td></tr><tr><td>第1章</td><td>压缩题意重述；补充输入信息集、时间标签和审计能力边界。</td></tr><tr><td>第2章</td><td>统一状态/控制量单位；补闭合DP转移与终端边界。</td></tr><tr><td>第3章</td><td>将信息截面、计划求解、实际回放写成可执行流程；区分运行时审计和持久化结果。</td></tr><tr><td>第4章</td><td>明确MILP、DP和破平局正则项各自作用，降低“最优”表述强度。</td></tr><tr><td>第5章</td><td>拆分预测方法、诊断和结算；标明非连续暖启动、无终端价值和风险扩展边界。</td></tr><tr><td>第6章</td><td>定义调减/调增费用和触发量；把“信息更新有害”改为当前账单观察。</td></tr><tr><td>第7章</td><td>分开Q4-2/Q4-3状态链；注明全天价格可见是假设，并解释紧急量相同的结构性原因。</td></tr><tr><td>第8章</td><td>把工作簿内容准确写成144点计划、四小时聚合、0/24时SOC和合并区间。</td></tr><tr><td>第9章</td><td>区分程序自检、研究基线和提交级证据；局限改为可执行待办。</td></tr><tr><td>第10章</td><td>用可检查事实替代抽象“闭环/体系”评价，保留推广条件。</td></tr><tr><td>第11章</td><td>结论按口径、数字、动态价格、复现方式分段，避免拔高。</td></tr></tbody></table>
+<h2>第二层：模型逻辑与表达风险</h2>
+<table><thead><tr><th>检查项</th><th>结论</th><th>仍需人工确认</th></tr></thead><tbody>
+<tr><td>模型是否过度复杂</td><td>主线仍是MILP/LP+滚动回放；DP、CVaR和场景法在正文中作为交叉核验或扩展接口。</td><td>候选算法若要替换主线，须按相同信息集、SOC、结算和运行时间做配对实验。</td></tr>
+<tr><td>结果—解释是否混写</td><td>已把费用、紧急量、调整量和结构性解释分开；Q4紧急量相同只作当前结构下的解释。</td><td>不能把解释写成因果证明；Q4价格信息集和B结算口径仍需裁决。</td></tr>
+<tr><td>证据是否足以提交</td><td>当前代码、结果和工作簿检查通过，论文明确标为研究基线。</td><td>连续SOC预热、终端库存价值、逐格物理证书、图形二进制哈希和Word同步仍未完成。</td></tr>
+</tbody></table>
+<h2>可复现检查记录</h2>
+<ul><li><code>validate_results.py</code>：PASS；</li><li><code>scripts/validate_input_xml.py</code>：PASS（结构计数范围）；</li><li><code>scripts/validate_workbook_semantics.py</code>：PASS（四分支各334天、日末SOC记录边界）；</li><li><code>pytest -q</code>：3 passed；</li><li>Overleaf v58：XeLaTeX 0 errors，58页；正文 overfull=0，217 条 overfull 位于源码附录长代码行；主图 PNG 已按来源审查后替换。</li></ul>
+<p class="small">详细的逐章修改理由和未决事项见同目录下的 <code>research/论文人类化逐章审核记录.md</code>。本报告不替代提交前的匿名、文件大小、输入附件、结果哈希和支撑包清点。</p>
+</body></html>
