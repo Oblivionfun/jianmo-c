@@ -3,7 +3,7 @@
   "contest": "cumcm",
   "main_tex": "main.tex",
   "template": {
-    "path": "/Users/xingyu/.codex/skills/math-modeling/tools/latex/assets/templates/cumcm",
+    "path": null,
     "source": null,
     "version": null,
     "sha256": "beffdfb2062dbc72f3d6050691ec9a3816d8f91fd85840720ddd8ec757a3ae61"
@@ -16,16 +16,23 @@
     {
       "source": "solve_c.py",
       "destination": "code/solve_c.py",
-      "sha256": "1439de45b0e9bfb777d14ba996b4e9155e4033c6620566d6f1f39df325bb6291",
+      "sha256": "792d7b530acb28f95fcd36c648939bcf8634f9e4d0d2151582fb702e02b3448d",
       "hash_mode": "content",
-      "bound_at": "2026-09-11T17:56:18.084147+00:00"
+      "bound_at": "2026-09-13T11:31:52.846696+00:00"
+    },
+    {
+      "source": "state_value.py",
+      "destination": "code/state_value.py",
+      "sha256": "c8cb714ea948c14eebe7fcd6242369fdd7d5c82a852db7864b4fbc30fc1189b5",
+      "hash_mode": "content",
+      "bound_at": "2026-09-13T11:31:53.818881+00:00"
     },
     {
       "source": "figures",
       "destination": "figs",
-      "sha256": "6feeb6cf518ddd0da37aae1565ecc0ecbcf113b6c89d72d11c1337d368d97d8d",
+      "sha256": "af1913ca95e35403fe74d1fd62b776739593f05df559219af3f11c57a4ad5cf4",
       "hash_mode": "tree",
-      "bound_at": "2026-09-11T17:59:44.749881+00:00"
+      "bound_at": "2026-09-13T11:32:15.099887+00:00"
     }
   ],
   "created_at": "2026-09-11T14:52:20.964373+00:00"
